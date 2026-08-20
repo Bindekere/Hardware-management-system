@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { fetchDebtorsApi, fetchCreditorsApi, addLedgerEntryApi, recordLedgerPaymentApi, fetchTransactionsApi } from './api';
 
+const INITIAL_DEBTORS = [
+  { id: 'c-1', name: 'John Doe Builders', phone: '+11223344', total_credit: 350.00, amount_paid: 230.00, balance_due: 120.00, store_credit: 0.00, status: 'OVERDUE' },
+  { id: 'c-2', name: 'Apex Construction', phone: '+55667788', total_credit: 500.00, amount_paid: 170.00, balance_due: 330.00, store_credit: 0.00, status: 'PENDING' },
+  { id: 'c-3', name: 'Samuel Miller', phone: '+77889900', total_credit: 0.00, amount_paid: 250.00, balance_due: 0.00, store_credit: 150.00, status: 'STORE CREDIT' }
+];
+
+const INITIAL_CREDITORS = [
+  { id: 's-1', name: 'Plumbing World', phone: '+987654321', total_purchased: 600.00, amount_paid: 450.00, balance_due: 150.00, status: 'PENDING' },
+  { id: 's-2', name: 'BuildPro Supplies', phone: '+123456789', total_purchased: 1200.00, amount_paid: 1200.00, balance_due: 0.00, status: 'CLEARED' }
+];
+
 export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
   const [activeTab, setActiveTab] = useState('DEBTORS');
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,28 +29,23 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     amount: ''
   });
 
-  const [debtors, setDebtors] = useState([
-    { id: 'c-1', name: 'John Doe Builders', phone: '+11223344', total_credit: 350.00, amount_paid: 230.00, balance_due: 120.00, store_credit: 0.00, status: 'OVERDUE' },
-    { id: 'c-2', name: 'Apex Construction', phone: '+55667788', total_credit: 500.00, amount_paid: 170.00, balance_due: 330.00, store_credit: 0.00, status: 'PENDING' },
-    { id: 'c-3', name: 'Samuel Miller', phone: '+77889900', total_credit: 0.00, amount_paid: 250.00, balance_due: 0.00, store_credit: 150.00, status: 'STORE CREDIT' }
-  ]);
-
-  const [creditors, setCreditors] = useState([
-    { id: 's-1', name: 'Plumbing World', phone: '+987654321', total_purchased: 600.00, amount_paid: 450.00, balance_due: 150.00, status: 'PENDING' },
-    { id: 's-2', name: 'BuildPro Supplies', phone: '+123456789', total_purchased: 1200.00, amount_paid: 1200.00, balance_due: 0.00, status: 'CLEARED' }
-  ]);
+  const [debtors, setDebtors] = useState(INITIAL_DEBTORS);
+  const [creditors, setCreditors] = useState(INITIAL_CREDITORS);
 
   useEffect(() => {
-    fetchDebtorsApi().then(d => { if (d) setDebtors(d); });
-    fetchCreditorsApi().then(c => { if (c) setCreditors(c); });
+    fetchDebtorsApi().then(d => {
+      if (Array.isArray(d) && d.length > 0) setDebtors(d);
+    });
+    fetchCreditorsApi().then(c => {
+      if (Array.isArray(c) && c.length > 0) setCreditors(c);
+    });
   }, []);
 
   // Transaction audit drawer
-  const [auditDrawer, setAuditDrawer] = useState(null); // { entity, transactions }
+  const [auditDrawer, setAuditDrawer] = useState(null);
   const openAuditDrawer = async (item) => {
     let txns = await fetchTransactionsApi(item.id);
-    // Fallback mock transactions if backend offline
-    if (!txns.length) {
+    if (!Array.isArray(txns) || !txns.length) {
       txns = [
         { type: activeTab === 'DEBTORS' ? 'CREDIT_EXTENDED' : 'PURCHASE_ON_CREDIT', amount: (item.total_credit || item.total_purchased || 0), timestamp: new Date(Date.now() - 86400000 * 7).toISOString(), note: 'Account opened' },
         ...(item.amount_paid > 0 ? [{ type: 'PAYMENT_RECEIVED', amount: item.amount_paid, timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), note: 'Partial payment received' }] : [])
@@ -48,16 +54,20 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     setAuditDrawer({ entity: item, transactions: txns });
   };
 
-  const currentList = activeTab === 'DEBTORS' ? debtors : creditors;
+  const safeDebtors = Array.isArray(debtors) ? debtors : INITIAL_DEBTORS;
+  const safeCreditors = Array.isArray(creditors) ? creditors : INITIAL_CREDITORS;
+  const currentList = activeTab === 'DEBTORS' ? safeDebtors : safeCreditors;
 
   const filteredList = currentList.filter(item => 
-    (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
-    (item.phone && item.phone.includes(searchTerm))
+    item && (
+      (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
+      (item.phone && String(item.phone).includes(searchTerm))
+    )
   );
 
-  const totalDebtorsBalance = debtors.reduce((sum, d) => sum + (d.balance_due || 0), 0);
-  const totalStoreCredits = debtors.reduce((sum, d) => sum + (d.store_credit || 0), 0);
-  const totalCreditorsBalance = creditors.reduce((sum, c) => sum + (c.balance_due || 0), 0);
+  const totalDebtorsBalance = safeDebtors.reduce((sum, d) => sum + (Number(d.balance_due) || 0), 0);
+  const totalStoreCredits = safeDebtors.reduce((sum, d) => sum + (Number(d.store_credit) || 0), 0);
+  const totalCreditorsBalance = safeCreditors.reduce((sum, c) => sum + (Number(c.balance_due) || 0), 0);
 
   const handlePrintReceipt = (receipt) => {
     const printWin = window.open('', '_blank');
@@ -86,7 +96,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
           <div class="border"></div>
           <div class="item bold font-size:14px;">
             <span>AMOUNT:</span>
-            <span>$${receipt.total.toFixed(2)}</span>
+            <span>$${Number(receipt.total).toFixed(2)}</span>
           </div>
           <div class="border"></div>
           <div class="center" style="font-size:10px; margin-top:15px;">Thank you for your business!</div>
@@ -112,7 +122,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
         store_credit: 0,
         status: 'PENDING'
       };
-      setDebtors([...debtors, entry]);
+      setDebtors([...safeDebtors, entry]);
     } else if (newEntry.type === 'PREPAYMENT') {
       const entry = {
         id: `c-${Date.now()}`,
@@ -124,7 +134,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
         store_credit: val,
         status: 'STORE CREDIT'
       };
-      setDebtors([...debtors, entry]);
+      setDebtors([...safeDebtors, entry]);
 
       const receipt = {
         id: `REC-PREPAY-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -147,7 +157,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
         balance_due: val,
         status: 'PENDING'
       };
-      setCreditors([...creditors, entry]);
+      setCreditors([...safeCreditors, entry]);
     }
 
     // Backend sync
@@ -169,20 +179,20 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     let typeLabel = 'Debtor Balance Payment';
 
     if (activeTab === 'DEBTORS') {
-      setDebtors(debtors.map(d => {
+      setDebtors(safeDebtors.map(d => {
         if (d.id === showPaymentModal.id) {
-          const newBal = Math.max(0, d.balance_due - pay);
-          return { ...d, amount_paid: d.amount_paid + pay, balance_due: newBal, status: newBal === 0 ? 'CLEARED' : d.status };
+          const newBal = Math.max(0, (Number(d.balance_due) || 0) - pay);
+          return { ...d, amount_paid: (Number(d.amount_paid) || 0) + pay, balance_due: newBal, status: newBal === 0 ? 'CLEARED' : d.status };
         }
         return d;
       }));
     } else {
       receiptPrefix = 'REC-SUP-PAY-';
       typeLabel = 'Supplier Creditor Payment';
-      setCreditors(creditors.map(c => {
+      setCreditors(safeCreditors.map(c => {
         if (c.id === showPaymentModal.id) {
-          const newBal = Math.max(0, c.balance_due - pay);
-          return { ...c, amount_paid: c.amount_paid + pay, balance_due: newBal, status: newBal === 0 ? 'CLEARED' : c.status };
+          const newBal = Math.max(0, (Number(c.balance_due) || 0) - pay);
+          return { ...c, amount_paid: (Number(c.amount_paid) || 0) + pay, balance_due: newBal, status: newBal === 0 ? 'CLEARED' : c.status };
         }
         return c;
       }));
@@ -311,21 +321,24 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
                 </tr>
               ) : (
                 filteredList.map(item => {
-                  const totalAmount = item.total_credit !== undefined ? item.total_credit : (item.total_purchased || 0);
-                  const isPrepaid = item.store_credit && item.store_credit > 0;
+                  const totalAmount = item.total_credit !== undefined ? Number(item.total_credit) : (Number(item.total_purchased) || 0);
+                  const isPrepaid = Number(item.store_credit) > 0;
+                  const balanceDue = Number(item.balance_due) || 0;
+                  const amountPaid = Number(item.amount_paid) || 0;
+                  const storeCredit = Number(item.store_credit) || 0;
                   
                   return (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="py-3 px-3 sm:px-4 font-semibold text-gray-900 whitespace-nowrap">{item.name}</td>
-                      <td className="py-3 px-3 sm:px-4 text-xs text-gray-600 font-mono whitespace-nowrap">{item.phone}</td>
+                      <td className="py-3 px-3 sm:px-4 text-xs text-gray-600 font-mono whitespace-nowrap">{item.phone || '-'}</td>
                       <td className="py-3 px-3 sm:px-4 text-gray-700 whitespace-nowrap">${totalAmount.toFixed(2)}</td>
-                      <td className="py-3 px-3 sm:px-4 text-green-600 font-medium whitespace-nowrap">${(item.amount_paid || 0).toFixed(2)}</td>
-                      <td className={`py-3 px-3 sm:px-4 font-bold whitespace-nowrap ${item.balance_due > 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                        ${(item.balance_due || 0).toFixed(2)}
+                      <td className="py-3 px-3 sm:px-4 text-green-600 font-medium whitespace-nowrap">${amountPaid.toFixed(2)}</td>
+                      <td className={`py-3 px-3 sm:px-4 font-bold whitespace-nowrap ${balanceDue > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                        ${balanceDue.toFixed(2)}
                       </td>
                       {activeTab === 'DEBTORS' && (
                         <td className="py-3 px-3 sm:px-4 font-bold text-green-700 whitespace-nowrap">
-                          {isPrepaid ? `$${item.store_credit.toFixed(2)}` : '$0.00'}
+                          {isPrepaid ? `$${storeCredit.toFixed(2)}` : '$0.00'}
                         </td>
                       )}
                       <td className="py-3 px-3 sm:px-4 whitespace-nowrap">
@@ -338,7 +351,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
                         </span>
                       </td>
                       <td className="py-3 px-3 sm:px-4 text-right space-x-1 whitespace-nowrap">
-                        {item.balance_due > 0 && (
+                        {balanceDue > 0 && (
                           <button 
                             onClick={() => setShowPaymentModal(item)}
                             className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2.5 py-1 rounded transition shadow-sm"
@@ -378,7 +391,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
             <form onSubmit={handleRecordPayment} className="space-y-3 text-xs sm:text-sm">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Balance Due</label>
-                <div className="font-bold text-red-600 text-lg sm:text-xl">${(showPaymentModal.balance_due || 0).toFixed(2)}</div>
+                <div className="font-bold text-red-600 text-lg sm:text-xl">${(Number(showPaymentModal.balance_due) || 0).toFixed(2)}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Amount ($)</label>
@@ -506,7 +519,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
             <div className="p-3.5 sm:p-4 border-b flex justify-between items-start">
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-gray-900">Transaction History</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{auditDrawer.entity.name} · {auditDrawer.entity.phone}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{auditDrawer.entity.name} · {auditDrawer.entity.phone || '-'}</p>
               </div>
               <button onClick={() => setAuditDrawer(null)} className="text-gray-400 hover:text-gray-700 text-lg font-bold leading-none p-1">✕</button>
             </div>
@@ -515,21 +528,21 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
             <div className="grid grid-cols-3 gap-px bg-gray-100 border-b text-center text-xs">
               <div className="bg-white p-2.5 sm:p-3">
                 <div className="text-gray-500 font-semibold uppercase text-[10px] sm:text-xs">Total Credit</div>
-                <div className="font-bold text-gray-900 mt-0.5 text-xs sm:text-sm">${(auditDrawer.entity.total_credit || auditDrawer.entity.total_purchased || 0).toFixed(2)}</div>
+                <div className="font-bold text-gray-900 mt-0.5 text-xs sm:text-sm">${(Number(auditDrawer.entity.total_credit || auditDrawer.entity.total_purchased) || 0).toFixed(2)}</div>
               </div>
               <div className="bg-white p-2.5 sm:p-3">
                 <div className="text-green-600 font-semibold uppercase text-[10px] sm:text-xs">Amount Paid</div>
-                <div className="font-bold text-green-700 mt-0.5 text-xs sm:text-sm">${(auditDrawer.entity.amount_paid || 0).toFixed(2)}</div>
+                <div className="font-bold text-green-700 mt-0.5 text-xs sm:text-sm">${(Number(auditDrawer.entity.amount_paid) || 0).toFixed(2)}</div>
               </div>
               <div className="bg-white p-2.5 sm:p-3">
                 <div className="text-red-600 font-semibold uppercase text-[10px] sm:text-xs">Balance Due</div>
-                <div className="font-bold text-red-700 mt-0.5 text-xs sm:text-sm">${(auditDrawer.entity.balance_due || 0).toFixed(2)}</div>
+                <div className="font-bold text-red-700 mt-0.5 text-xs sm:text-sm">${(Number(auditDrawer.entity.balance_due) || 0).toFixed(2)}</div>
               </div>
             </div>
 
             {/* Transactions list */}
             <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
-              {auditDrawer.transactions.length === 0 ? (
+              {!Array.isArray(auditDrawer.transactions) || auditDrawer.transactions.length === 0 ? (
                 <div className="py-8 text-center text-gray-400 text-xs">No transaction history found.</div>
               ) : auditDrawer.transactions.map((tx, i) => {
                 const typeColors = {
@@ -558,7 +571,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
                         {tx.payment_method && <div className="text-[11px] text-gray-400">via {tx.payment_method}</div>}
                       </div>
                     </div>
-                    <div className="text-xs sm:text-sm font-bold text-gray-900">${(tx.amount || 0).toFixed(2)}</div>
+                    <div className="text-xs sm:text-sm font-bold text-gray-900">${(Number(tx.amount) || 0).toFixed(2)}</div>
                   </div>
                 );
               })}

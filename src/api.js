@@ -8,7 +8,8 @@ export async function fetchProducts() {
   try {
     const res = await fetch(`${API_BASE}/products/`);
     if (!res.ok) throw new Error('API request failed');
-    return await res.json();
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
   } catch (err) {
     console.warn('Backend offline, using local state:', err);
     return null;
@@ -46,7 +47,9 @@ export async function processSaleApi(sale) {
 export async function fetchDebtorsApi() {
   try {
     const res = await fetch(`${API_BASE}/ledger/debtors`);
-    return await res.json();
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
   } catch (err) {
     return null;
   }
@@ -55,7 +58,9 @@ export async function fetchDebtorsApi() {
 export async function fetchCreditorsApi() {
   try {
     const res = await fetch(`${API_BASE}/ledger/creditors`);
-    return await res.json();
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
   } catch (err) {
     return null;
   }
@@ -64,7 +69,10 @@ export async function fetchCreditorsApi() {
 export async function fetchTransactionsApi(entityId) {
   try {
     const res = await fetch(`${API_BASE}/ledger/transactions/${entityId}`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    }
     return [];
   } catch (err) {
     return [];
