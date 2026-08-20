@@ -7,10 +7,11 @@ export default function DebtorsCreditorsLedgerView() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
 
-  // Unified State for Debtors and Creditors
+  // Unified State for Debtors, Creditors, and Customer Store Credits (Prepayments)
   const [debtors, setDebtors] = useState([
-    { id: 'c-1', name: 'John Doe Builders', phone: '+11223344', total_credit: 350.00, amount_paid: 230.00, balance_due: 120.00, status: 'OVERDUE' },
-    { id: 'c-2', name: 'Apex Construction', phone: '+55667788', total_credit: 500.00, amount_paid: 170.00, balance_due: 330.00, status: 'PENDING' }
+    { id: 'c-1', name: 'John Doe Builders', phone: '+11223344', total_credit: 350.00, amount_paid: 230.00, balance_due: 120.00, store_credit: 0.00, status: 'OVERDUE' },
+    { id: 'c-2', name: 'Apex Construction', phone: '+55667788', total_credit: 500.00, amount_paid: 170.00, balance_due: 330.00, store_credit: 0.00, status: 'PENDING' },
+    { id: 'c-3', name: 'Samuel Miller', phone: '+77889900', total_credit: 0.00, amount_paid: 250.00, balance_due: 0.00, store_credit: 150.00, status: 'STORE CREDIT (Paid/Pending Pickup)' }
   ]);
 
   const [creditors, setCreditors] = useState([
@@ -26,7 +27,9 @@ export default function DebtorsCreditorsLedgerView() {
   );
 
   const totalDebtorsBalance = debtors.reduce((sum, d) => sum + d.balance_due, 0);
+  const totalStoreCredits = debtors.reduce((sum, d) => sum + (d.store_credit || 0), 0);
   const totalCreditorsBalance = creditors.reduce((sum, c) => sum + c.balance_due, 0);
+
 
   const handleRecordPayment = (e) => {
     e.preventDefault();
@@ -55,17 +58,27 @@ export default function DebtorsCreditorsLedgerView() {
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div 
           onClick={() => setActiveTab('DEBTORS')}
           className={`p-4 rounded-lg shadow-sm border cursor-pointer transition ${activeTab === 'DEBTORS' ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400' : 'bg-white border-gray-200'}`}
         >
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-amber-900 uppercase">Customers Owe Us (Debtors)</span>
-            <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-semibold">{debtors.length} Accounts</span>
           </div>
           <p className="text-2xl font-bold text-red-600 mt-2">${totalDebtorsBalance.toFixed(2)}</p>
           <span className="text-xs text-gray-500">Uncollected customer credit sales</span>
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('DEBTORS')}
+          className="p-4 rounded-lg shadow-sm border bg-green-50 border-green-200"
+        >
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-green-900 uppercase">Customer Store Credits / Prepayments</span>
+          </div>
+          <p className="text-2xl font-bold text-green-700 mt-2">${totalStoreCredits.toFixed(2)}</p>
+          <span className="text-xs text-green-800">Prepaid orders / Change kept for future sales</span>
         </div>
 
         <div 
@@ -74,7 +87,6 @@ export default function DebtorsCreditorsLedgerView() {
         >
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-slate-800 uppercase">We Owe Suppliers (Creditors)</span>
-            <span className="text-xs bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-semibold">{creditors.length} Accounts</span>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-2">${totalCreditorsBalance.toFixed(2)}</p>
           <span className="text-xs text-gray-500">Unpaid supplier stock purchases</span>
@@ -90,7 +102,7 @@ export default function DebtorsCreditorsLedgerView() {
               onClick={() => setActiveTab('DEBTORS')}
               className={`px-3 py-1.5 rounded text-xs font-bold transition ${activeTab === 'DEBTORS' ? 'bg-amber-500 text-slate-900 shadow' : 'bg-white border text-gray-700'}`}
             >
-              Debtors Ledger (Customers)
+              Debtors & Store Credits (Customers)
             </button>
             <button 
               onClick={() => setActiveTab('CREDITORS')}
@@ -119,6 +131,7 @@ export default function DebtorsCreditorsLedgerView() {
                 <th className="py-3 px-4">{activeTab === 'DEBTORS' ? 'Total Credit' : 'Total Invoiced'}</th>
                 <th className="py-3 px-4">Amount Paid</th>
                 <th className="py-3 px-4">Balance Due</th>
+                {activeTab === 'DEBTORS' && <th className="py-3 px-4">Store Credit (Prepaid)</th>}
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
@@ -133,23 +146,33 @@ export default function DebtorsCreditorsLedgerView() {
                   <td className={`py-3 px-4 font-bold ${item.balance_due > 0 ? 'text-red-600' : 'text-gray-900'}`}>
                     ${item.balance_due.toFixed(2)}
                   </td>
+                  {activeTab === 'DEBTORS' && (
+                    <td className="py-3 px-4 font-bold text-green-700">
+                      {item.store_credit > 0 ? `$${item.store_credit.toFixed(2)}` : '$0.00'}
+                    </td>
+                  )}
                   <td className="py-3 px-4">
                     <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                      item.store_credit > 0 ? 'bg-blue-100 text-blue-800' :
                       item.status === 'CLEARED' ? 'bg-green-100 text-green-800' :
                       item.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
                     }`}>
-                      {item.status}
+                      {item.store_credit > 0 ? 'PREPAID CREDIT' : item.status}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    {item.balance_due > 0 && (
+                    {item.balance_due > 0 ? (
                       <button 
                         onClick={() => setShowPaymentModal(item)}
                         className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2.5 py-1 rounded transition shadow-sm"
                       >
                         Record Payment
                       </button>
-                    )}
+                    ) : item.store_credit > 0 ? (
+                      <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                        Available for Sale
+                      </span>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -157,6 +180,7 @@ export default function DebtorsCreditorsLedgerView() {
           </table>
         </div>
       </div>
+
 
       {/* Record Payment Modal */}
       {showPaymentModal && (
