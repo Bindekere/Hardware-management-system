@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import InventoryView from './InventoryView';
+import SalesView from './SalesView';
+
 
 
 export default function App() {
@@ -76,7 +78,17 @@ export default function App() {
         </aside>
 
           {/* Main Content Area */}
-          {activeTab === 'Inventory' ? (
+          {activeTab === 'Sales' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-gray-800">Quick Sales Terminal</h1>
+                <span className="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded">
+                  Active Role: {userRole}
+                </span>
+              </div>
+              <SalesView />
+            </div>
+          ) : activeTab === 'Inventory' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-800">Inventory & Products</h1>
@@ -87,6 +99,7 @@ export default function App() {
               <InventoryView userRole={userRole} />
             </div>
           ) : (
+
             <>
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-800">{activeTab}</h1>

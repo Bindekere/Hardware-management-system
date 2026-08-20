@@ -54,3 +54,15 @@ class StockAdjustmentCreate(BaseModel):
     quantity: int
     movement_type: str # SALE, PURCHASE, RETURN, DAMAGE, LOSS, THEFT, ADJUSTMENT
     reason: Optional[str] = None
+
+class SaleItemCreate(BaseModel):
+    product_id: str
+    quantity: int
+    unit_price: float
+
+class SaleCreate(BaseModel):
+    customer_id: Optional[str] = None
+    items: List[SaleItemCreate]
+    payment_method: str # Cash, Mobile Money, Bank, Credit
+    amount_paid: float
+
