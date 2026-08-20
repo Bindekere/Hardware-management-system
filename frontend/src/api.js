@@ -1,4 +1,8 @@
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = import.meta.env.VITE_API_URL !== undefined
+  ? import.meta.env.VITE_API_URL
+  : (typeof window !== 'undefined' && (window.location.port === '5173')
+      ? 'http://127.0.0.1:8000'
+      : '');
 
 export async function fetchProducts() {
   try {
