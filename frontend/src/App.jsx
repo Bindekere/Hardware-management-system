@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import InventoryView from './InventoryView';
+
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -73,87 +75,101 @@ export default function App() {
           ))}
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">{activeTab}</h1>
-            <span className="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded">
-              Active Role: {userRole}
-            </span>
-          </div>
+          {/* Main Content Area */}
+          {activeTab === 'Inventory' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-gray-800">Inventory & Products</h1>
+                <span className="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded">
+                  Active Role: {userRole}
+                </span>
+              </div>
+              <InventoryView userRole={userRole} />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-gray-800">{activeTab}</h1>
+                <span className="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded">
+                  Active Role: {userRole}
+                </span>
+              </div>
 
-          {/* Key Metrics Dashboard Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Today's Sales</span>
-              <p className="text-2xl font-bold text-gray-900 mt-1">$1,245.50</p>
-              <span className="text-xs text-green-600 font-medium">+12% vs yesterday</span>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Products</span>
-              <p className="text-2xl font-bold text-gray-900 mt-1">142</p>
-              <span className="text-xs text-gray-500 font-medium">12 Categories</span>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Low Stock Alerts</span>
-              <p className="text-2xl font-bold text-amber-600 mt-1">5</p>
-              <span className="text-xs text-amber-600 font-medium">Requires reorder</span>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Customers Owe Us</span>
-              <p className="text-2xl font-bold text-red-600 mt-1">$450.00</p>
-              <span className="text-xs text-red-500 font-medium">3 Unpaid credit sales</span>
-            </div>
-          </div>
+              {/* Key Metrics Dashboard Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Today's Sales</span>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">$1,245.50</p>
+                  <span className="text-xs text-green-600 font-medium">+12% vs yesterday</span>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Products</span>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">142</p>
+                  <span className="text-xs text-gray-500 font-medium">12 Categories</span>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Low Stock Alerts</span>
+                  <p className="text-2xl font-bold text-amber-600 mt-1">5</p>
+                  <span className="text-xs text-amber-600 font-medium">Requires reorder</span>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Customers Owe Us</span>
+                  <p className="text-2xl font-bold text-red-600 mt-1">$450.00</p>
+                  <span className="text-xs text-red-500 font-medium">3 Unpaid credit sales</span>
+                </div>
+              </div>
 
-          {/* Recent Operations & Best Sellers */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Recent Sales</h2>
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 text-xs border-b">
-                  <tr>
-                    <th className="py-2 px-3">Item</th>
-                    <th className="py-2 px-3">Qty</th>
-                    <th className="py-2 px-3">Amount</th>
-                    <th className="py-2 px-3">Payment</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr>
-                    <td className="py-2 px-3 font-medium">Cement 50kg</td>
-                    <td className="py-2 px-3">10</td>
-                    <td className="py-2 px-3">$120.00</td>
-                    <td className="py-2 px-3"><span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded">Cash</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 px-3 font-medium">PVC Pipe 2"</td>
-                    <td className="py-2 px-3">5</td>
-                    <td className="py-2 px-3">$45.00</td>
-                    <td className="py-2 px-3"><span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">Mobile</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+              {/* Recent Operations & Best Sellers */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Recent Sales</h2>
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500 text-xs border-b">
+                      <tr>
+                        <th className="py-2 px-3">Item</th>
+                        <th className="py-2 px-3">Qty</th>
+                        <th className="py-2 px-3">Amount</th>
+                        <th className="py-2 px-3">Payment</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      <tr>
+                        <td className="py-2 px-3 font-medium">Cement 50kg</td>
+                        <td className="py-2 px-3">10</td>
+                        <td className="py-2 px-3">$120.00</td>
+                        <td className="py-2 px-3"><span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded">Cash</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-medium">PVC Pipe 2"</td>
+                        <td className="py-2 px-3">5</td>
+                        <td className="py-2 px-3">$45.00</td>
+                        <td className="py-2 px-3"><span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">Mobile</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Top 5 Best Sellers</h2>
-              <ul className="space-y-2 text-sm">
-                <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="font-medium text-gray-800">1. Cement 50kg</span>
-                  <span className="text-gray-500 font-semibold">145 sold</span>
-                </li>
-                <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="font-medium text-gray-800">2. Iron Sheet 30G</span>
-                  <span className="text-gray-500 font-semibold">89 sold</span>
-                </li>
-                <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="font-medium text-gray-800">3. PVC Pipe 2"</span>
-                  <span className="text-gray-500 font-semibold">64 sold</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Top 5 Best Sellers</h2>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                      <span className="font-medium text-gray-800">1. Cement 50kg</span>
+                      <span className="text-gray-500 font-semibold">145 sold</span>
+                    </li>
+                    <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                      <span className="font-medium text-gray-800">2. Iron Sheet 30G</span>
+                      <span className="text-gray-500 font-semibold">89 sold</span>
+                    </li>
+                    <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                      <span className="font-medium text-gray-800">3. PVC Pipe 2"</span>
+                      <span className="text-gray-500 font-semibold">64 sold</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </>
+          )}
+
         </main>
       </div>
     </div>
