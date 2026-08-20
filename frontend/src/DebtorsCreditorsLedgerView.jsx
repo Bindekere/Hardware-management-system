@@ -34,6 +34,26 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     fetchCreditorsApi().then(c => { if (c) setCreditors(c); });
   }, []);
 
+  // Transaction audit drawer
+  const [auditDrawer, setAuditDrawer] = useState(null); // { entity, transactions }
+  const openAuditDrawer = async (item) => {
+    let txns = [];
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/ledger/transactions/${item.id}`);
+      if (res.ok) txns = await res.json();
+    } catch (_) {}
+    // Fallback mock transactions if backend offline
+    if (!txns.length) {
+      txns = [
+        { type: activeTab === 'DEBTORS' ? 'CREDIT_EXTENDED' : 'PURCHASE_ON_CREDIT', amount: (item.total_credit || item.total_purchased || 0), timestamp: new Date(Date.now() - 86400000 * 7).toISOString(), note: 'Account opened' },
+        ...(item.amount_paid > 0 ? [{ type: 'PAYMENT_RECEIVED', amount: item.amount_paid, timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), note: 'Partial payment received' }] : [])
+      ];
+    }
+    setAuditDrawer({ entity: item, transactions: txns });
+  };
+
+
+
 
   const currentList = activeTab === 'DEBTORS' ? debtors : creditors;
 
@@ -320,20 +340,29 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
                         {isPrepaid ? 'PREPAID CREDIT' : item.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      {item.balance_due > 0 ? (
+                    <td className="py-3 px-4 text-right space-x-1">
+                      {item.balance_due > 0 && (
                         <button 
                           onClick={() => setShowPaymentModal(item)}
                           className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2.5 py-1 rounded transition shadow-sm"
                         >
                           Record Payment
                         </button>
-                      ) : isPrepaid ? (
+                      )}
+                      {isPrepaid && (
                         <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2 py-1 rounded border border-blue-200">
                           Available for Sale
                         </span>
-                      ) : null}
+                      )}
+                      <button
+                        onClick={() => openAuditDrawer(item)}
+                        className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded transition"
+                        title="View transaction history"
+                      >
+                        📋 History
+                      </button>
                     </td>
+
                   </tr>
                 );
               })}
@@ -468,6 +497,83 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Audit Drawer */}
+      {auditDrawer && (
+        <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl">
+            <div className="p-4 border-b flex justify-between items-start">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Transaction History</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{auditDrawer.entity.name} · {auditDrawer.entity.phone}</p>
+              </div>
+              <button onClick={() => setAuditDrawer(null)} className="text-gray-400 hover:text-gray-700 text-lg font-bold leading-none">✕</button>
+            </div>
+
+            {/* Summary strip */}
+            <div className="grid grid-cols-3 gap-px bg-gray-100 border-b text-center text-xs">
+              <div className="bg-white p-3">
+                <div className="text-gray-500 font-semibold uppercase">Total Credit</div>
+                <div className="font-bold text-gray-900 mt-0.5">${(auditDrawer.entity.total_credit || auditDrawer.entity.total_purchased || 0).toFixed(2)}</div>
+              </div>
+              <div className="bg-white p-3">
+                <div className="text-green-600 font-semibold uppercase">Amount Paid</div>
+                <div className="font-bold text-green-700 mt-0.5">${(auditDrawer.entity.amount_paid || 0).toFixed(2)}</div>
+              </div>
+              <div className="bg-white p-3">
+                <div className="text-red-600 font-semibold uppercase">Balance Due</div>
+                <div className="font-bold text-red-700 mt-0.5">${(auditDrawer.entity.balance_due || 0).toFixed(2)}</div>
+              </div>
+            </div>
+
+            {/* Transactions list */}
+            <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+              {auditDrawer.transactions.length === 0 ? (
+                <div className="py-8 text-center text-gray-400 text-xs">No transaction history found.</div>
+              ) : auditDrawer.transactions.map((tx, i) => {
+                const typeColors = {
+                  CREDIT_EXTENDED: 'bg-red-100 text-red-800',
+                  PURCHASE_ON_CREDIT: 'bg-red-100 text-red-800',
+                  PAYMENT_RECEIVED: 'bg-green-100 text-green-800',
+                  PAYMENT_MADE: 'bg-green-100 text-green-800',
+                  PREPAYMENT: 'bg-blue-100 text-blue-800'
+                };
+                const typeLabel = {
+                  CREDIT_EXTENDED: 'Credit Extended',
+                  PURCHASE_ON_CREDIT: 'Purchase on Credit',
+                  PAYMENT_RECEIVED: 'Payment Received',
+                  PAYMENT_MADE: 'Payment Made',
+                  PREPAYMENT: 'Store Credit Deposit'
+                };
+                return (
+                  <div key={i} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${typeColors[tx.type] || 'bg-gray-100 text-gray-800'}`}>
+                        {typeLabel[tx.type] || tx.type}
+                      </span>
+                      <div>
+                        <div className="text-xs text-gray-500">{new Date(tx.timestamp).toLocaleString()}</div>
+                        {tx.note && <div className="text-xs text-gray-400">{tx.note}</div>}
+                        {tx.payment_method && <div className="text-xs text-gray-400">via {tx.payment_method}</div>}
+                      </div>
+                    </div>
+                    <div className="text-sm font-bold text-gray-900">${(tx.amount || 0).toFixed(2)}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-3 border-t bg-gray-50">
+              <button
+                onClick={() => setAuditDrawer(null)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded text-xs"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -32,7 +32,21 @@ export default function App() {
     setReceipts([newReceipt, ...receipts]);
   };
 
+  // Keyboard shortcut listener ('/' hotkey to focus global search)
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) searchInput.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const roleNavMap = {
+
     ADMIN: ['Dashboard', 'Sales', 'Inventory', 'Purchases', 'Stock Take', 'Debtors & Creditors', 'Reports', 'Receipt Book'],
     SALES_STAFF: ['Dashboard', 'Sales', 'Receipt Book', 'Debtors & Creditors'],
     STOREKEEPER: ['Dashboard', 'Inventory', 'Purchases', 'Stock Take', 'Debtors & Creditors'],
@@ -55,11 +69,13 @@ export default function App() {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <input 
+              id="global-search-input"
               type="text" 
               placeholder="Search products, SKU, barcode... (/)" 
               className="bg-slate-800 text-sm text-gray-200 rounded px-3 py-1.5 w-72 focus:outline-none focus:ring-1 focus:ring-amber-500 border border-slate-700"
             />
           </div>
+
           {(userRole === 'ADMIN' || userRole === 'SALES_STAFF') && (
             <button 
               onClick={() => setActiveTab('Sales')}
@@ -134,7 +150,7 @@ export default function App() {
           ) : activeTab === 'Stock Take' ? (
 
 
-            <StockTakeView />
+            <StockTakeView userRole={userRole} />
           ) : activeTab === 'Reports' ? (
             <ReportsView />
           ) : activeTab === 'Receipt Book' ? (
