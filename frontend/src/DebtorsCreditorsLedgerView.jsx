@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchDebtorsApi, fetchCreditorsApi, addLedgerEntryApi, recordLedgerPaymentApi } from './api';
+import { fetchDebtorsApi, fetchCreditorsApi, addLedgerEntryApi, recordLedgerPaymentApi, fetchTransactionsApi } from './api';
 
 export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
   const [activeTab, setActiveTab] = useState('DEBTORS');
@@ -37,11 +37,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
   // Transaction audit drawer
   const [auditDrawer, setAuditDrawer] = useState(null); // { entity, transactions }
   const openAuditDrawer = async (item) => {
-    let txns = [];
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/ledger/transactions/${item.id}`);
-      if (res.ok) txns = await res.json();
-    } catch (_) {}
+    let txns = await fetchTransactionsApi(item.id);
     // Fallback mock transactions if backend offline
     if (!txns.length) {
       txns = [

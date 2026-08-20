@@ -1,8 +1,8 @@
 const API_BASE = import.meta.env.VITE_API_URL !== undefined
   ? import.meta.env.VITE_API_URL
-  : (typeof window !== 'undefined' && (window.location.port === '5173')
-      ? 'http://127.0.0.1:8000'
-      : '');
+  : (typeof window !== 'undefined' && window.location.port === '5173'
+      ? 'http://127.0.0.1:8000/api'
+      : '/api');
 
 export async function fetchProducts() {
   try {
@@ -58,6 +58,16 @@ export async function fetchCreditorsApi() {
     return await res.json();
   } catch (err) {
     return null;
+  }
+}
+
+export async function fetchTransactionsApi(entityId) {
+  try {
+    const res = await fetch(`${API_BASE}/ledger/transactions/${entityId}`);
+    if (res.ok) return await res.json();
+    return [];
+  } catch (err) {
+    return [];
   }
 }
 

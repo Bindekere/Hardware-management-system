@@ -20,6 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers at root
 app.include_router(auth_router)
 app.include_router(products_router)
 app.include_router(sales_router)
@@ -29,15 +30,22 @@ app.include_router(stock_take_router)
 app.include_router(reports_router)
 app.include_router(ledger_router)
 
-
-
-
+# Also include routers under /api prefix for Vercel Serverless Function routing
+app.include_router(auth_router, prefix="/api")
+app.include_router(products_router, prefix="/api")
+app.include_router(sales_router, prefix="/api")
+app.include_router(purchases_router, prefix="/api")
+app.include_router(customers_router, prefix="/api")
+app.include_router(stock_take_router, prefix="/api")
+app.include_router(reports_router, prefix="/api")
+app.include_router(ledger_router, prefix="/api")
 
 @app.get("/")
+@app.get("/api")
 def read_root():
     return {"message": "HardwareDesk API is running"}
 
-
 @app.get("/health")
+@app.get("/api/health")
 def health_check():
     return {"status": "ok"}
