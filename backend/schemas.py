@@ -5,9 +5,7 @@ from datetime import datetime
 
 class UserRole(str, Enum):
     ADMIN = "ADMIN"
-    SALES_STAFF = "SALES_STAFF"
     STOREKEEPER = "STOREKEEPER"
-    VIEWER = "VIEWER"
 
 class UserBase(BaseModel):
     email: EmailStr
