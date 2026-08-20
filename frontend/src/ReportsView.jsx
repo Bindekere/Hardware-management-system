@@ -138,72 +138,76 @@ export default function ReportsView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header & Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-gray-800">Financial Reports & Analytics</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">Financial Reports & Analytics</h2>
           <p className="text-xs text-gray-500">Revenue, expenses, and profit breakdown for any time period.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {['TODAY', 'WEEKLY', 'MONTHLY', 'CUSTOM'].map((p) => (
             <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 rounded text-xs font-semibold transition ${period === p ? 'bg-amber-500 text-slate-900 shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition ${period === p ? 'bg-amber-500 text-slate-900 shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
               {p}
             </button>
           ))}
-          <button onClick={handlePrintReport} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded text-xs">
+          <button onClick={handlePrintReport} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition">
             🖨 Print PDF
           </button>
           <button onClick={() => exportToCSV(filteredSales, filteredPurchases, period)}
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1.5 rounded text-xs">
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition">
             ⬇ Export CSV
           </button>
         </div>
       </div>
 
       {period === 'CUSTOM' && (
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center space-x-4 text-xs">
-          <span className="font-semibold text-amber-900">Custom Period Range:</span>
-          <label className="text-amber-800">From:</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border rounded px-2 py-1 bg-white" />
-          <label className="text-amber-800">To:</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border rounded px-2 py-1 bg-white" />
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs">
+          <span className="font-semibold text-amber-900">Custom Range:</span>
+          <div className="flex items-center space-x-2">
+            <label className="text-amber-800">From:</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border rounded-lg px-2 py-1 bg-white text-xs" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-amber-800">To:</label>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border rounded-lg px-2 py-1 bg-white text-xs" />
+          </div>
         </div>
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {[
-          { label: 'Total Revenue', val: `$${totalRevenue.toFixed(2)}`, color: 'text-gray-900', sub: 'Cash in from sales' },
-          { label: 'Stock Expenses', val: `$${totalStockPurchases.toFixed(2)}`, color: 'text-red-600', sub: 'Inventory purchased' },
-          { label: 'Est. Gross Profit', val: `$${totalProfit.toFixed(2)}`, color: 'text-green-600', sub: 'Sell price − cost' },
-          { label: 'Net Cash Flow', val: `$${netCashFlow.toFixed(2)}`, color: netCashFlow >= 0 ? 'text-slate-900' : 'text-red-600', sub: 'Revenue − expenses' },
+          { label: 'Total Revenue', val: `$${totalRevenue.toFixed(2)}`, color: 'text-gray-900', sub: 'Cash from sales' },
+          { label: 'Stock Expenses', val: `$${totalStockPurchases.toFixed(2)}`, color: 'text-red-600', sub: 'Stock purchases' },
+          { label: 'Gross Profit', val: `$${totalProfit.toFixed(2)}`, color: 'text-green-600', sub: 'Margin profit' },
+          { label: 'Net Cash Flow', val: `$${netCashFlow.toFixed(2)}`, color: netCashFlow >= 0 ? 'text-slate-900' : 'text-red-600', sub: 'Rev − Exp' },
           { label: 'Profit Margin', val: `${profitMargin}%`, color: 'text-indigo-600', sub: 'Of total revenue' },
-          { label: 'Items Sold', val: totalItemsSold, color: 'text-gray-900', sub: `${totalTransactions} transactions` }
+          { label: 'Items Sold', val: totalItemsSold, color: 'text-gray-900', sub: `${totalTransactions} sales` }
         ].map((card) => (
-          <div key={card.label} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{card.label}</span>
-            <p className={`text-xl font-bold mt-1 ${card.color}`}>{card.val}</p>
-            <span className="text-xs text-gray-400">{card.sub}</span>
+          <div key={card.label} className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200">
+            <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider block">{card.label}</span>
+            <p className={`text-base sm:text-xl font-bold mt-1 ${card.color}`}>{card.val}</p>
+            <span className="text-[10px] sm:text-xs text-gray-400 block truncate">{card.sub}</span>
           </div>
         ))}
       </div>
 
       {/* Detailed Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <div className="p-3.5 sm:p-4 border-b bg-gray-50 flex justify-between items-center">
             <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Sales Revenue</h3>
             <span className="text-xs text-gray-500">{filteredSales.length} sales</span>
           </div>
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-100 text-gray-700 text-xs uppercase border-b">
+          <table className="w-full text-xs sm:text-sm text-left">
+            <thead className="bg-slate-100 text-gray-700 text-[11px] sm:text-xs uppercase border-b">
               <tr>
-                <th className="py-2.5 px-3">Receipt #</th>
-                <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3">Revenue</th>
-                <th className="py-2.5 px-3">Est. Profit</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Receipt #</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Date</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Revenue</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Est. Profit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -211,28 +215,28 @@ export default function ReportsView() {
                 <tr><td colSpan="4" className="py-6 text-center text-gray-400 text-xs">No sales in selected period.</td></tr>
               ) : filteredSales.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50 text-xs">
-                  <td className="py-2.5 px-3 font-mono font-bold text-gray-900">{s.id}</td>
-                  <td className="py-2.5 px-3 text-gray-600">{s.date}</td>
-                  <td className="py-2.5 px-3 font-semibold text-gray-900">${s.revenue.toFixed(2)}</td>
-                  <td className="py-2.5 px-3 font-bold text-green-600">${s.profit.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-gray-900 whitespace-nowrap">{s.id}</td>
+                  <td className="py-2.5 px-3 text-gray-600 whitespace-nowrap">{s.date}</td>
+                  <td className="py-2.5 px-3 font-semibold text-gray-900 whitespace-nowrap">${s.revenue.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 font-bold text-green-600 whitespace-nowrap">${s.profit.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-            <h3 className="text-xs font-bold text-red-700 uppercase tracking-wider">Stock Purchase Expenses</h3>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <div className="p-3.5 sm:p-4 border-b bg-gray-50 flex justify-between items-center">
+            <h3 className="text-xs font-bold text-red-700 uppercase tracking-wider">Stock Expenses</h3>
             <span className="text-xs text-gray-500">{filteredPurchases.length} purchases</span>
           </div>
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-100 text-gray-700 text-xs uppercase border-b">
+          <table className="w-full text-xs sm:text-sm text-left">
+            <thead className="bg-slate-100 text-gray-700 text-[11px] sm:text-xs uppercase border-b">
               <tr>
-                <th className="py-2.5 px-3">PO #</th>
-                <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3">Supplier</th>
-                <th className="py-2.5 px-3">Amount</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">PO #</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Date</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Supplier</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -240,10 +244,10 @@ export default function ReportsView() {
                 <tr><td colSpan="4" className="py-6 text-center text-gray-400 text-xs">No purchases in selected period.</td></tr>
               ) : filteredPurchases.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50 text-xs">
-                  <td className="py-2.5 px-3 font-mono font-bold text-gray-900">{p.id}</td>
-                  <td className="py-2.5 px-3 text-gray-600">{p.date}</td>
-                  <td className="py-2.5 px-3 font-medium text-gray-800">{p.supplier}</td>
-                  <td className="py-2.5 px-3 font-bold text-red-600">${p.cost.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-gray-900 whitespace-nowrap">{p.id}</td>
+                  <td className="py-2.5 px-3 text-gray-600 whitespace-nowrap">{p.date}</td>
+                  <td className="py-2.5 px-3 font-medium text-gray-800 whitespace-nowrap">{p.supplier}</td>
+                  <td className="py-2.5 px-3 font-bold text-red-600 whitespace-nowrap">${p.cost.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
