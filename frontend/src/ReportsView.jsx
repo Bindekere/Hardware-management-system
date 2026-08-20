@@ -9,38 +9,43 @@ const MOCK_SALES_HISTORY = [
   { id: 'REC-441920', date: '2026-08-01', revenue: 800.00, profit: 240.00, itemsCount: 65 }
 ];
 
+const MOCK_PURCHASES_HISTORY = [
+  { id: 'PUR-101', date: '2026-08-20', supplier: 'Plumbing World', cost: 150.00 },
+  { id: 'PUR-098', date: '2026-08-18', supplier: 'BuildPro Supplies', cost: 450.00 },
+  { id: 'PUR-092', date: '2026-08-05', supplier: 'BuildPro Supplies', cost: 600.00 }
+];
+
 export default function ReportsView() {
   const [period, setPeriod] = useState('TODAY'); // TODAY, WEEKLY, MONTHLY, CUSTOM
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const getFilteredSales = () => {
-    const today = new Date('2026-08-20');
-    return MOCK_SALES_HISTORY.filter(s => {
-      const sDate = new Date(s.date);
-      if (period === 'TODAY') {
-        return s.date === '2026-08-20';
-      }
-      if (period === 'WEEKLY') {
-        const diffDays = (today - sDate) / (1000 * 3600 * 24);
-        return diffDays >= 0 && diffDays <= 7;
-      }
-      if (period === 'MONTHLY') {
-        return sDate.getMonth() === today.getMonth() && sDate.getFullYear() === today.getFullYear();
-      }
-      if (period === 'CUSTOM' && startDate && endDate) {
-        return sDate >= new Date(startDate) && sDate <= new Date(endDate);
-      }
-      return true;
-    });
+  const today = new Date('2026-08-20');
+
+  const filterByPeriod = (itemDateStr) => {
+    const d = new Date(itemDateStr);
+    if (period === 'TODAY') return itemDateStr === '2026-08-20';
+    if (period === 'WEEKLY') {
+      const diffDays = (today - d) / (1000 * 3600 * 24);
+      return diffDays >= 0 && diffDays <= 7;
+    }
+    if (period === 'MONTHLY') {
+      return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    }
+    if (period === 'CUSTOM' && startDate && endDate) {
+      return d >= new Date(startDate) && d <= new Date(endDate);
+    }
+    return true;
   };
 
-  const filteredSales = getFilteredSales();
+  const filteredSales = MOCK_SALES_HISTORY.filter(s => filterByPeriod(s.date));
+  const filteredPurchases = MOCK_PURCHASES_HISTORY.filter(p => filterByPeriod(p.date));
 
   const totalRevenue = filteredSales.reduce((sum, s) => sum + s.revenue, 0);
+  const totalStockPurchases = filteredPurchases.reduce((sum, p) => sum + p.cost, 0);
   const totalProfit = filteredSales.reduce((sum, s) => sum + s.profit, 0);
-  const totalItemsSold = filteredSales.reduce((sum, s) => sum + s.itemsCount, 0);
-  const totalTransactions = filteredSales.length;
+  const netCashFlow = totalRevenue - totalStockPurchases;
+
 
   const handlePrintReport = () => {
     const printWin = window.open('', '_blank');
@@ -139,7 +144,12 @@ export default function ReportsView() {
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Sales Revenue</span>
           <p className="text-2xl font-bold text-gray-900 mt-1">${totalRevenue.toFixed(2)}</p>
-          <span className="text-xs text-gray-400">For selected period</span>
+          <span className="text-xs text-gray-400">Cash in from sales</span>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <span className="text-xs font-semibold text-red-600 uppercase tracking-wider">Stock Purchase Expenses</span>
+          <p className="text-2xl font-bold text-red-600 mt-1">${totalStockPurchases.toFixed(2)}</p>
+          <span className="text-xs text-red-500 font-medium">Inventory purchases made</span>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Estimated Gross Profit</span>
@@ -147,52 +157,85 @@ export default function ReportsView() {
           <span className="text-xs text-green-600 font-medium">Selling Price - Cost Price</span>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Transactions</span>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{totalTransactions}</p>
-          <span className="text-xs text-gray-400">Sales completed</span>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Items Sold</span>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{totalItemsSold}</p>
-          <span className="text-xs text-gray-400">Units moved</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Net Cash Flow</span>
+          <p className={`text-2xl font-bold mt-1 ${netCashFlow >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+            ${netCashFlow.toFixed(2)}
+          </p>
+          <span className="text-xs text-gray-400">Revenue - Stock Expenses</span>
         </div>
       </div>
 
-      {/* Detailed Sales Breakdown Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Period Sales Activity Breakdown</h3>
-          <span className="text-xs text-gray-500">{filteredSales.length} records</span>
-        </div>
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-100 text-gray-700 text-xs uppercase border-b">
-            <tr>
-              <th className="py-3 px-4">Receipt #</th>
-              <th className="py-3 px-4">Date</th>
-              <th className="py-3 px-4">Items Quantity</th>
-              <th className="py-3 px-4">Sales Revenue</th>
-              <th className="py-3 px-4">Estimated Profit</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredSales.length === 0 ? (
+      {/* Detailed Tables Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Sales Activity Breakdown */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Sales Revenue</h3>
+            <span className="text-xs text-gray-500">{filteredSales.length} sales</span>
+          </div>
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-100 text-gray-700 text-xs uppercase border-b">
               <tr>
-                <td colSpan="5" className="py-8 text-center text-gray-400 text-xs">No financial records found for this period filter.</td>
+                <th className="py-2.5 px-3">Receipt #</th>
+                <th className="py-2.5 px-3">Date</th>
+                <th className="py-2.5 px-3">Revenue</th>
+                <th className="py-2.5 px-3">Gross Profit</th>
               </tr>
-            ) : (
-              filteredSales.map(s => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-mono font-bold text-gray-900">{s.id}</td>
-                  <td className="py-3 px-4 text-xs text-gray-600">{s.date}</td>
-                  <td className="py-3 px-4 text-gray-700">{s.itemsCount} pcs</td>
-                  <td className="py-3 px-4 font-semibold text-gray-900">${s.revenue.toFixed(2)}</td>
-                  <td className="py-3 px-4 font-bold text-green-600">${s.profit.toFixed(2)}</td>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredSales.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="py-6 text-center text-gray-400 text-xs">No sales in period.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredSales.map(s => (
+                  <tr key={s.id} className="hover:bg-gray-50 text-xs">
+                    <td className="py-2.5 px-3 font-mono font-bold text-gray-900">{s.id}</td>
+                    <td className="py-2.5 px-3 text-gray-600">{s.date}</td>
+                    <td className="py-2.5 px-3 font-semibold text-gray-900">${s.revenue.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 font-bold text-green-600">${s.profit.toFixed(2)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Stock Purchase Expenses Breakdown */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+            <h3 className="text-xs font-bold text-red-700 uppercase tracking-wider">Stock Purchase Expenses</h3>
+            <span className="text-xs text-gray-500">{filteredPurchases.length} purchases</span>
+          </div>
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-100 text-gray-700 text-xs uppercase border-b">
+              <tr>
+                <th className="py-2.5 px-3">PO #</th>
+                <th className="py-2.5 px-3">Date</th>
+                <th className="py-2.5 px-3">Supplier</th>
+                <th className="py-2.5 px-3">Expense Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredPurchases.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="py-6 text-center text-gray-400 text-xs">No stock purchases in period.</td>
+                </tr>
+              ) : (
+                filteredPurchases.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50 text-xs">
+                    <td className="py-2.5 px-3 font-mono font-bold text-gray-900">{p.id}</td>
+                    <td className="py-2.5 px-3 text-gray-600">{p.date}</td>
+                    <td className="py-2.5 px-3 font-medium text-gray-800">{p.supplier}</td>
+                    <td className="py-2.5 px-3 font-bold text-red-600">${p.cost.toFixed(2)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
     </div>
   );
 }
