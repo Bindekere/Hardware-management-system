@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 
 export default function DebtorsCreditorsLedgerView() {
-  const [activeTab, setActiveTab] = useState('DEBTORS'); // DEBTORS (Customers Owe Us), CREDITORS (We Owe Suppliers)
+  const [activeTab, setActiveTab] = useState('DEBTORS');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
 
-  // Unified State for Debtors, Creditors, and Customer Store Credits (Prepayments)
   const [debtors, setDebtors] = useState([
     { id: 'c-1', name: 'John Doe Builders', phone: '+11223344', total_credit: 350.00, amount_paid: 230.00, balance_due: 120.00, store_credit: 0.00, status: 'OVERDUE' },
     { id: 'c-2', name: 'Apex Construction', phone: '+55667788', total_credit: 500.00, amount_paid: 170.00, balance_due: 330.00, store_credit: 0.00, status: 'PENDING' },
-    { id: 'c-3', name: 'Samuel Miller', phone: '+77889900', total_credit: 0.00, amount_paid: 250.00, balance_due: 0.00, store_credit: 150.00, status: 'STORE CREDIT (Paid/Pending Pickup)' }
+    { id: 'c-3', name: 'Samuel Miller', phone: '+77889900', total_credit: 0.00, amount_paid: 250.00, balance_due: 0.00, store_credit: 150.00, status: 'STORE CREDIT' }
   ]);
 
   const [creditors, setCreditors] = useState([
@@ -22,14 +21,13 @@ export default function DebtorsCreditorsLedgerView() {
   const currentList = activeTab === 'DEBTORS' ? debtors : creditors;
 
   const filteredList = currentList.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.phone.includes(searchTerm)
+    (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
+    (item.phone && item.phone.includes(searchTerm))
   );
 
-  const totalDebtorsBalance = debtors.reduce((sum, d) => sum + d.balance_due, 0);
+  const totalDebtorsBalance = debtors.reduce((sum, d) => sum + (d.balance_due || 0), 0);
   const totalStoreCredits = debtors.reduce((sum, d) => sum + (d.store_credit || 0), 0);
-  const totalCreditorsBalance = creditors.reduce((sum, c) => sum + c.balance_due, 0);
-
+  const totalCreditorsBalance = creditors.reduce((sum, c) => sum + (c.balance_due || 0), 0);
 
   const handleRecordPayment = (e) => {
     e.preventDefault();
@@ -72,7 +70,7 @@ export default function DebtorsCreditorsLedgerView() {
 
         <div 
           onClick={() => setActiveTab('DEBTORS')}
-          className="p-4 rounded-lg shadow-sm border bg-green-50 border-green-200"
+          className="p-4 rounded-lg shadow-sm border bg-green-50 border-green-200 cursor-pointer"
         >
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-green-900 uppercase">Customer Store Credits / Prepayments</span>
@@ -137,50 +135,54 @@ export default function DebtorsCreditorsLedgerView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredList.map(item => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-semibold text-gray-900">{item.name}</td>
-                  <td className="py-3 px-4 text-xs text-gray-600 font-mono">{item.phone}</td>
-                  <td className="py-3 px-4 text-gray-700">${(item.total_credit || item.total_purchased).toFixed(2)}</td>
-                  <td className="py-3 px-4 text-green-600 font-medium">${item.amount_paid.toFixed(2)}</td>
-                  <td className={`py-3 px-4 font-bold ${item.balance_due > 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                    ${item.balance_due.toFixed(2)}
-                  </td>
-                  {activeTab === 'DEBTORS' && (
-                    <td className="py-3 px-4 font-bold text-green-700">
-                      {item.store_credit > 0 ? `$${item.store_credit.toFixed(2)}` : '$0.00'}
+              {filteredList.map(item => {
+                const totalAmount = item.total_credit !== undefined ? item.total_credit : (item.total_purchased || 0);
+                const isPrepaid = item.store_credit && item.store_credit > 0;
+                
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="py-3 px-4 font-semibold text-gray-900">{item.name}</td>
+                    <td className="py-3 px-4 text-xs text-gray-600 font-mono">{item.phone}</td>
+                    <td className="py-3 px-4 text-gray-700">${totalAmount.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-green-600 font-medium">${(item.amount_paid || 0).toFixed(2)}</td>
+                    <td className={`py-3 px-4 font-bold ${item.balance_due > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                      ${(item.balance_due || 0).toFixed(2)}
                     </td>
-                  )}
-                  <td className="py-3 px-4">
-                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${
-                      item.store_credit > 0 ? 'bg-blue-100 text-blue-800' :
-                      item.status === 'CLEARED' ? 'bg-green-100 text-green-800' :
-                      item.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {item.store_credit > 0 ? 'PREPAID CREDIT' : item.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    {item.balance_due > 0 ? (
-                      <button 
-                        onClick={() => setShowPaymentModal(item)}
-                        className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2.5 py-1 rounded transition shadow-sm"
-                      >
-                        Record Payment
-                      </button>
-                    ) : item.store_credit > 0 ? (
-                      <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2 py-1 rounded border border-blue-200">
-                        Available for Sale
+                    {activeTab === 'DEBTORS' && (
+                      <td className="py-3 px-4 font-bold text-green-700">
+                        {isPrepaid ? `$${item.store_credit.toFixed(2)}` : '$0.00'}
+                      </td>
+                    )}
+                    <td className="py-3 px-4">
+                      <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                        isPrepaid ? 'bg-blue-100 text-blue-800' :
+                        item.status === 'CLEARED' ? 'bg-green-100 text-green-800' :
+                        item.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {isPrepaid ? 'PREPAID CREDIT' : item.status}
                       </span>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {item.balance_due > 0 ? (
+                        <button 
+                          onClick={() => setShowPaymentModal(item)}
+                          className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2.5 py-1 rounded transition shadow-sm"
+                        >
+                          Record Payment
+                        </button>
+                      ) : isPrepaid ? (
+                        <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                          Available for Sale
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
-
 
       {/* Record Payment Modal */}
       {showPaymentModal && (
@@ -192,7 +194,7 @@ export default function DebtorsCreditorsLedgerView() {
             <form onSubmit={handleRecordPayment} className="space-y-3 text-sm">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Balance Due</label>
-                <div className="font-bold text-red-600 text-lg">${showPaymentModal.balance_due.toFixed(2)}</div>
+                <div className="font-bold text-red-600 text-lg">${(showPaymentModal.balance_due || 0).toFixed(2)}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Amount ($)</label>
