@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import InventoryView from './InventoryView';
 import SalesView from './SalesView';
+import PurchasesView from './PurchasesView';
+import CustomersView from './CustomersView';
+import StockTakeView from './StockTakeView';
+import ReportsView from './ReportsView';
+
 
 
 
@@ -98,7 +103,16 @@ export default function App() {
               </div>
               <InventoryView userRole={userRole} />
             </div>
+          ) : activeTab === 'Purchases' ? (
+            <PurchasesView />
+          ) : activeTab === 'Customers & Debtors' || activeTab === 'Suppliers & Creditors' ? (
+            <CustomersView />
+          ) : activeTab === 'Stock Take' ? (
+            <StockTakeView />
+          ) : activeTab === 'Reports' ? (
+            <ReportsView />
           ) : (
+
 
             <>
               <div className="flex items-center justify-between">

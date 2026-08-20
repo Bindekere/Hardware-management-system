@@ -66,3 +66,30 @@ class SaleCreate(BaseModel):
     payment_method: str # Cash, Mobile Money, Bank, Credit
     amount_paid: float
 
+class SupplierCreate(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+
+class CustomerCreate(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+class PurchaseItemCreate(BaseModel):
+    product_id: str
+    quantity: int
+    unit_cost: float
+
+class PurchaseCreate(BaseModel):
+    supplier_id: str
+    items: List[PurchaseItemCreate]
+    amount_paid: float
+
+class StockCountItemCreate(BaseModel):
+    product_id: str
+    physical_quantity: int
+    reason: str # Damaged, Lost, Theft, Wrong Previous Entry, Unknown, Other
+
+
