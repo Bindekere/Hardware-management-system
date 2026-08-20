@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
+from pathlib import Path
 
 from auth import router as auth_router
 from products import router as products_router
@@ -40,12 +44,45 @@ app.include_router(stock_take_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(ledger_router, prefix="/api")
 
-@app.get("/")
-@app.get("/api")
-def read_root():
-    return {"message": "HardwareDesk API is running"}
-
 @app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+# Find built frontend index.html
+def get_index_path():
+    candidates = [
+        Path(__file__).parent.parent / "frontend" / "dist" / "index.html",
+        Path(__file__).parent.parent / "dist" / "index.html",
+        Path(__file__).parent / "dist" / "index.html",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+# Find assets folder
+def get_assets_path():
+    candidates = [
+        Path(__file__).parent.parent / "frontend" / "dist" / "assets",
+        Path(__file__).parent.parent / "dist" / "assets",
+        Path(__file__).parent / "dist" / "assets",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+assets_dir = get_assets_path()
+if assets_dir:
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+@app.get("/")
+@app.get("/api")
+@app.get("/index.html")
+@app.get("/api/index.py")
+def serve_root():
+    p = get_index_path()
+    if p:
+        return FileResponse(str(p))
+    return {"message": "HardwareDesk API is live"}
