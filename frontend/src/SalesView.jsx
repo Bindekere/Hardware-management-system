@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { processSaleApi } from './api';
+
 
 const MOCK_PRODUCTS = [
   { id: 'prod-1', sku: 'CEM-001', barcode: '8901234567890', name: 'Portland Cement 50kg', selling_price: 12.00, stock_quantity: 120 },
@@ -85,7 +87,7 @@ export default function SalesView({ onSaleComplete }) {
     printWindow.document.close();
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
     const saleRecord = {
       id: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -94,12 +96,22 @@ export default function SalesView({ onSaleComplete }) {
       timestamp: new Date().toISOString(),
       items: cart
     };
+    
     setCompletedSale(saleRecord);
+
+    // Sync with FastAPI backend
+    await processSaleApi({
+      items: cart.map(i => ({ product_id: i.id, quantity: i.quantity, unit_price: i.selling_price })),
+      payment_method: paymentMethod,
+      amount_paid: totalAmount
+    });
+
     if (onSaleComplete) {
       onSaleComplete(saleRecord);
     }
     setCart([]);
   };
+
 
 
   return (

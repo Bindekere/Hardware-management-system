@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchProducts, createProductApi } from './api';
 
 const INITIAL_PRODUCTS = [
   {
@@ -48,6 +49,14 @@ export default function InventoryView({ userRole }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(null);
 
+  useEffect(() => {
+    fetchProducts().then(apiProds => {
+      if (apiProds && apiProds.length > 0) {
+        setProducts(apiProds);
+      }
+    });
+  }, []);
+
   const [newProduct, setNewProduct] = useState({
     name: '', sku: '', barcode: '', category: 'Building', cost_price: '', selling_price: '', stock_quantity: '', minimum_stock: 5, location: 'A1-S1-B1'
   });
@@ -58,7 +67,7 @@ export default function InventoryView({ userRole }) {
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.barcode.includes(searchTerm)
+    (p.barcode && p.barcode.includes(searchTerm))
   );
 
   const getStockBadge = (qty, min) => {
@@ -67,7 +76,7 @@ export default function InventoryView({ userRole }) {
     return <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded">IN STOCK</span>;
   };
 
-  const handleAddProduct = (e) => {
+  const handleAddProduct = async (e) => {
     e.preventDefault();
     const created = {
       ...newProduct,
@@ -77,10 +86,14 @@ export default function InventoryView({ userRole }) {
       stock_quantity: parseInt(newProduct.stock_quantity) || 0,
       minimum_stock: parseInt(newProduct.minimum_stock) || 5
     };
+    
     setProducts([...products, created]);
+    await createProductApi(created);
+
     setShowAddModal(false);
     setNewProduct({ name: '', sku: '', barcode: '', category: 'Building', cost_price: '', selling_price: '', stock_quantity: '', minimum_stock: 5, location: 'A1-S1-B1' });
   };
+
 
   const handleAdjustStock = (e) => {
     e.preventDefault();

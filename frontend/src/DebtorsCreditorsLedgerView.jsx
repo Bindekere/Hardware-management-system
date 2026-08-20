@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchDebtorsApi, fetchCreditorsApi, addLedgerEntryApi, recordLedgerPaymentApi } from './api';
 
 export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
   const [activeTab, setActiveTab] = useState('DEBTORS');
@@ -13,7 +14,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
   const [newEntry, setNewEntry] = useState({
     name: '',
     phone: '',
-    type: 'DEBTOR', // DEBTOR or PREPAYMENT or CREDITOR
+    type: 'DEBTOR',
     amount: ''
   });
 
@@ -27,6 +28,12 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     { id: 's-1', name: 'Plumbing World', phone: '+987654321', total_purchased: 600.00, amount_paid: 450.00, balance_due: 150.00, status: 'PENDING' },
     { id: 's-2', name: 'BuildPro Supplies', phone: '+123456789', total_purchased: 1200.00, amount_paid: 1200.00, balance_due: 0.00, status: 'CLEARED' }
   ]);
+
+  useEffect(() => {
+    fetchDebtorsApi().then(d => { if (d) setDebtors(d); });
+    fetchCreditorsApi().then(c => { if (c) setCreditors(c); });
+  }, []);
+
 
   const currentList = activeTab === 'DEBTORS' ? debtors : creditors;
 
@@ -77,7 +84,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     printWin.document.close();
   };
 
-  const handleAddEntry = (e) => {
+  const handleAddEntry = async (e) => {
     e.preventDefault();
     const val = parseFloat(newEntry.amount) || 0;
 
@@ -106,7 +113,6 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
       };
       setDebtors([...debtors, entry]);
 
-      // Generate Prepayment Receipt (REC-PREPAY-XXXXXX)
       const receipt = {
         id: `REC-PREPAY-${Math.floor(100000 + Math.random() * 900000)}`,
         type_label: 'Customer Prepayment / Store Credit',
@@ -131,11 +137,19 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
       setCreditors([...creditors, entry]);
     }
 
+    // Backend sync
+    await addLedgerEntryApi({
+      name: newEntry.name,
+      phone: newEntry.phone,
+      type: newEntry.type,
+      amount: val
+    });
+
     setShowAddEntryModal(false);
     setNewEntry({ name: '', phone: '', type: 'DEBTOR', amount: '' });
   };
 
-  const handleRecordPayment = (e) => {
+  const handleRecordPayment = async (e) => {
     e.preventDefault();
     const pay = parseFloat(paymentAmount) || 0;
     let receiptPrefix = 'REC-DEBT-PAY-';
@@ -161,7 +175,14 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
       }));
     }
 
-    // Generate Payment Receipt with unique identifier prefix
+    // Backend API sync
+    await recordLedgerPaymentApi({
+      entity_type: activeTab === 'DEBTORS' ? 'DEBTOR' : 'CREDITOR',
+      entity_id: showPaymentModal.id,
+      amount: pay,
+      payment_method: paymentMethod
+    });
+
     const receipt = {
       id: `${receiptPrefix}${Math.floor(100000 + Math.random() * 900000)}`,
       type_label: typeLabel,
@@ -178,6 +199,7 @@ export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
     setShowPaymentModal(null);
     setPaymentAmount('');
   };
+
 
 
   return (

@@ -8,6 +8,7 @@ from purchases import router as purchases_router
 from customers import router as customers_router
 from stock_take import router as stock_take_router
 from reports import router as reports_router
+from ledger import router as ledger_router
 
 app = FastAPI(title="HardwareDesk API", version="1.0.0")
 
@@ -26,6 +27,8 @@ app.include_router(purchases_router)
 app.include_router(customers_router)
 app.include_router(stock_take_router)
 app.include_router(reports_router)
+app.include_router(ledger_router)
+
 
 
 

@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
 from enum import Enum
 from datetime import datetime
 
@@ -9,13 +9,24 @@ class UserRole(str, Enum):
     STOREKEEPER = "STOREKEEPER"
     VIEWER = "VIEWER"
 
+class UserBase(BaseModel):
+    email: EmailStr
+    full_name: str
+    role: UserRole
+
+class UserResponse(UserBase):
+    id: str
+
+    class Config:
+        from_attributes = True
+
 class ProductBase(BaseModel):
     sku: str
     barcode: Optional[str] = None
     name: str
-    category_id: Optional[str] = None
+    category_id: Optional[str] = "Building"
     supplier_id: Optional[str] = None
-    storage_location_id: Optional[str] = None
+    storage_location_id: Optional[str] = "A1-S1-B1"
     unit: str = "pcs"
     cost_price: float
     selling_price: float
@@ -31,10 +42,6 @@ class ProductUpdate(BaseModel):
     sku: Optional[str] = None
     barcode: Optional[str] = None
     name: Optional[str] = None
-    category_id: Optional[str] = None
-    supplier_id: Optional[str] = None
-    storage_location_id: Optional[str] = None
-    unit: Optional[str] = None
     cost_price: Optional[float] = None
     selling_price: Optional[float] = None
     stock_quantity: Optional[int] = None
@@ -43,8 +50,6 @@ class ProductUpdate(BaseModel):
 
 class ProductResponse(ProductBase):
     id: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -76,6 +81,14 @@ class CustomerCreate(BaseModel):
     name: str
     phone: Optional[str] = None
     address: Optional[str] = None
+    type: str = "DEBTOR" # DEBTOR, PREPAYMENT, CREDITOR
+    amount: float = 0.0
+
+class LedgerPaymentCreate(BaseModel):
+    entity_type: str # DEBTOR or CREDITOR
+    entity_id: str
+    amount: float
+    payment_method: str # Cash, Mobile Money, Bank
 
 class PurchaseItemCreate(BaseModel):
     product_id: str
@@ -90,6 +103,4 @@ class PurchaseCreate(BaseModel):
 class StockCountItemCreate(BaseModel):
     product_id: str
     physical_quantity: int
-    reason: str # Damaged, Lost, Theft, Wrong Previous Entry, Unknown, Other
-
-
+    reason: str
