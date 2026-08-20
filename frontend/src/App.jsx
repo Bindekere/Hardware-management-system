@@ -6,14 +6,10 @@ import CustomersView from './CustomersView';
 import StockTakeView from './StockTakeView';
 import ReportsView from './ReportsView';
 
-
-
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [userRole, setUserRole] = useState('ADMIN'); // ADMIN, SALES_STAFF, STOREKEEPER, VIEWER
 
-  // Role-based navigation permissions
   const roleNavMap = {
     ADMIN: ['Dashboard', 'Sales', 'Inventory', 'Purchases', 'Stock Take', 'Customers & Debtors', 'Suppliers & Creditors', 'Reports', 'Settings'],
     SALES_STAFF: ['Dashboard', 'Sales', 'Customers & Debtors'],
@@ -41,12 +37,15 @@ export default function App() {
             />
           </div>
           {(userRole === 'ADMIN' || userRole === 'SALES_STAFF') && (
-            <button className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-3 py-1.5 rounded text-sm transition shadow-sm">
+            <button 
+              onClick={() => setActiveTab('Sales')}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-3 py-1.5 rounded text-sm transition shadow-sm"
+            >
               + Quick Sale
             </button>
           )}
 
-          {/* Role Switcher for Testing/Demo */}
+          {/* Role Switcher */}
           <div className="flex items-center space-x-1 text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
             <span className="text-slate-400">Role:</span>
             <select 
@@ -82,7 +81,8 @@ export default function App() {
           ))}
         </aside>
 
-          {/* Main Content Area */}
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 space-y-6">
           {activeTab === 'Sales' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -112,9 +112,7 @@ export default function App() {
           ) : activeTab === 'Reports' ? (
             <ReportsView />
           ) : (
-
-
-            <>
+            <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-800">{activeTab}</h1>
                 <span className="text-xs bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded">
@@ -194,9 +192,8 @@ export default function App() {
                   </ul>
                 </div>
               </div>
-            </>
+            </div>
           )}
-
         </main>
       </div>
     </div>
