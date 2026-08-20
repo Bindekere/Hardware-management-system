@@ -6,11 +6,12 @@ const MOCK_PRODUCTS = [
   { id: 'prod-3', sku: 'NAL-003', barcode: '8901234567892', name: 'Steel Nails 3 inch (kg)', selling_price: 2.50, stock_quantity: 25 }
 ];
 
-export default function SalesView() {
+export default function SalesView({ onSaleComplete }) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [completedSale, setCompletedSale] = useState(null);
+
 
   const filteredProducts = MOCK_PRODUCTS.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -41,17 +42,65 @@ export default function SalesView() {
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.selling_price * item.quantity), 0);
 
+  const handlePrint = (receipt) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt ${receipt.id}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; width: 300px; }
+            h2 { text-align: center; margin-bottom: 5px; }
+            .center { text-align: center; }
+            .border { border-top: 1px dashed #000; margin: 10px 0; }
+            .item { display: flex; justify-content: space-between; font-size: 12px; }
+            .bold { font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>HardwareDesk</h2>
+          <div class="center" style="font-size:11px;">Hardware Store Management</div>
+          <div class="border"></div>
+          <div><strong>Receipt #:</strong> ${receipt.id}</div>
+          <div><strong>Date:</strong> ${new Date(receipt.timestamp).toLocaleString()}</div>
+          <div><strong>Payment:</strong> ${receipt.payment_method}</div>
+          <div class="border"></div>
+          ${receipt.items.map(i => `
+            <div class="item">
+              <span>${i.quantity}x ${i.name}</span>
+              <span>$${(i.selling_price * i.quantity).toFixed(2)}</span>
+            </div>
+          `).join('')}
+          <div class="border"></div>
+          <div class="item bold">
+            <span>TOTAL:</span>
+            <span>$${receipt.total.toFixed(2)}</span>
+          </div>
+          <div class="border"></div>
+          <div class="center" style="font-size:10px; margin-top:15px;">Thank you for your business!</div>
+          <script>window.print(); window.close();</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleCheckout = () => {
     if (cart.length === 0) return;
     const saleRecord = {
-      id: `SALE-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
       total: totalAmount,
-      method: paymentMethod,
+      payment_method: paymentMethod,
+      timestamp: new Date().toISOString(),
       items: cart
     };
     setCompletedSale(saleRecord);
+    if (onSaleComplete) {
+      onSaleComplete(saleRecord);
+    }
     setCart([]);
   };
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -171,18 +220,27 @@ export default function SalesView() {
               </div>
               <div className="flex justify-between text-gray-500">
                 <span>Payment:</span>
-                <span>{completedSale.method}</span>
+                <span>{completedSale.payment_method}</span>
               </div>
             </div>
-            <button 
-              onClick={() => setCompletedSale(null)}
-              className="w-full py-1.5 bg-slate-900 text-white rounded text-xs font-semibold hover:bg-slate-800"
-            >
-              Close & Next Sale
-            </button>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => handlePrint(completedSale)}
+                className="w-1/2 py-1.5 bg-amber-500 text-slate-900 rounded text-xs font-semibold hover:bg-amber-600"
+              >
+                Print Receipt
+              </button>
+              <button 
+                onClick={() => setCompletedSale(null)}
+                className="w-1/2 py-1.5 bg-slate-900 text-white rounded text-xs font-semibold hover:bg-slate-800"
+              >
+                Close & Next
+              </button>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

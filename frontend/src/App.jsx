@@ -5,17 +5,40 @@ import PurchasesView from './PurchasesView';
 import CustomersView from './CustomersView';
 import StockTakeView from './StockTakeView';
 import ReportsView from './ReportsView';
+import ReceiptBookView from './ReceiptBookView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
-  const [userRole, setUserRole] = useState('ADMIN'); // ADMIN, SALES_STAFF, STOREKEEPER, VIEWER
+  const [userRole, setUserRole] = useState('ADMIN');
+
+  const [receipts, setReceipts] = useState([
+    {
+      id: 'REC-849102',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      payment_method: 'Cash',
+      total: 120.00,
+      items: [{ name: 'Portland Cement 50kg', quantity: 10, selling_price: 12.00 }]
+    },
+    {
+      id: 'REC-391045',
+      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      payment_method: 'Mobile Money',
+      total: 42.50,
+      items: [{ name: 'PVC Pipe 2 inch (3m)', quantity: 5, selling_price: 8.50 }]
+    }
+  ]);
+
+  const handleSaleComplete = (newReceipt) => {
+    setReceipts([newReceipt, ...receipts]); // Store in receipt book (most recent first)
+  };
 
   const roleNavMap = {
-    ADMIN: ['Dashboard', 'Sales', 'Inventory', 'Purchases', 'Stock Take', 'Customers & Debtors', 'Suppliers & Creditors', 'Reports', 'Settings'],
-    SALES_STAFF: ['Dashboard', 'Sales', 'Customers & Debtors'],
+    ADMIN: ['Dashboard', 'Sales', 'Inventory', 'Purchases', 'Stock Take', 'Customers & Debtors', 'Suppliers & Creditors', 'Reports', 'Receipt Book'],
+    SALES_STAFF: ['Dashboard', 'Sales', 'Receipt Book', 'Customers & Debtors'],
     STOREKEEPER: ['Dashboard', 'Inventory', 'Purchases', 'Stock Take', 'Suppliers & Creditors'],
-    VIEWER: ['Dashboard', 'Reports']
+    VIEWER: ['Dashboard', 'Reports', 'Receipt Book']
   };
+
 
   const currentNav = roleNavMap[userRole] || roleNavMap.VIEWER;
 
@@ -91,7 +114,7 @@ export default function App() {
                   Active Role: {userRole}
                 </span>
               </div>
-              <SalesView />
+              <SalesView onSaleComplete={handleSaleComplete} />
             </div>
           ) : activeTab === 'Inventory' ? (
             <div className="space-y-4">
@@ -111,7 +134,10 @@ export default function App() {
             <StockTakeView />
           ) : activeTab === 'Reports' ? (
             <ReportsView />
+          ) : activeTab === 'Receipt Book' ? (
+            <ReceiptBookView receipts={receipts} />
           ) : (
+
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-800">{activeTab}</h1>
