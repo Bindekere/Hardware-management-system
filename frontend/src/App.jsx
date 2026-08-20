@@ -130,8 +130,9 @@ export default function App() {
           ) : activeTab === 'Purchases' ? (
             <PurchasesView />
           ) : activeTab === 'Debtors & Creditors' || activeTab === 'Customers & Debtors' || activeTab === 'Suppliers & Creditors' ? (
-            <DebtorsCreditorsLedgerView />
+            <DebtorsCreditorsLedgerView onAddReceipt={handleSaleComplete} />
           ) : activeTab === 'Stock Take' ? (
+
 
             <StockTakeView />
           ) : activeTab === 'Reports' ? (

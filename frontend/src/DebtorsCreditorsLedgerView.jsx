@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 
-export default function DebtorsCreditorsLedgerView() {
+export default function DebtorsCreditorsLedgerView({ onAddReceipt }) {
   const [activeTab, setActiveTab] = useState('DEBTORS');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(null);
+  const [showAddEntryModal, setShowAddEntryModal] = useState(false);
+
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+
+  // Form state for adding new customer/supplier entries
+  const [newEntry, setNewEntry] = useState({
+    name: '',
+    phone: '',
+    type: 'DEBTOR', // DEBTOR or PREPAYMENT or CREDITOR
+    amount: ''
+  });
 
   const [debtors, setDebtors] = useState([
     { id: 'c-1', name: 'John Doe Builders', phone: '+11223344', total_credit: 350.00, amount_paid: 230.00, balance_due: 120.00, store_credit: 0.00, status: 'OVERDUE' },
@@ -29,9 +39,108 @@ export default function DebtorsCreditorsLedgerView() {
   const totalStoreCredits = debtors.reduce((sum, d) => sum + (d.store_credit || 0), 0);
   const totalCreditorsBalance = creditors.reduce((sum, c) => sum + (c.balance_due || 0), 0);
 
+  const handlePrintReceipt = (receipt) => {
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`
+      <html>
+        <head>
+          <title>Receipt ${receipt.id}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; width: 300px; }
+            h2 { text-align: center; margin-bottom: 5px; }
+            .center { text-align: center; }
+            .border { border-top: 1px dashed #000; margin: 10px 0; }
+            .item { display: flex; justify-content: space-between; font-size: 12px; }
+            .bold { font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>HardwareDesk</h2>
+          <div class="center" style="font-size:11px;">Official Transaction Receipt</div>
+          <div class="border"></div>
+          <div><strong>Receipt #:</strong> ${receipt.id}</div>
+          <div><strong>Type:</strong> ${receipt.type_label}</div>
+          <div><strong>Party:</strong> ${receipt.customer_name}</div>
+          <div><strong>Date:</strong> ${new Date(receipt.timestamp).toLocaleString()}</div>
+          <div><strong>Payment:</strong> ${receipt.payment_method}</div>
+          <div class="border"></div>
+          <div class="item bold font-size:14px;">
+            <span>AMOUNT:</span>
+            <span>$${receipt.total.toFixed(2)}</span>
+          </div>
+          <div class="border"></div>
+          <div class="center" style="font-size:10px; margin-top:15px;">Thank you for your business!</div>
+          <script>window.print(); window.close();</script>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
+  const handleAddEntry = (e) => {
+    e.preventDefault();
+    const val = parseFloat(newEntry.amount) || 0;
+
+    if (newEntry.type === 'DEBTOR') {
+      const entry = {
+        id: `c-${Date.now()}`,
+        name: newEntry.name,
+        phone: newEntry.phone,
+        total_credit: val,
+        amount_paid: 0,
+        balance_due: val,
+        store_credit: 0,
+        status: 'PENDING'
+      };
+      setDebtors([...debtors, entry]);
+    } else if (newEntry.type === 'PREPAYMENT') {
+      const entry = {
+        id: `c-${Date.now()}`,
+        name: newEntry.name,
+        phone: newEntry.phone,
+        total_credit: 0,
+        amount_paid: val,
+        balance_due: 0,
+        store_credit: val,
+        status: 'STORE CREDIT'
+      };
+      setDebtors([...debtors, entry]);
+
+      // Generate Prepayment Receipt (REC-PREPAY-XXXXXX)
+      const receipt = {
+        id: `REC-PREPAY-${Math.floor(100000 + Math.random() * 900000)}`,
+        type_label: 'Customer Prepayment / Store Credit',
+        customer_name: newEntry.name,
+        timestamp: new Date().toISOString(),
+        payment_method: 'Cash',
+        total: val,
+        items: [{ name: 'Store Credit / Prepayment Deposit', quantity: 1, selling_price: val }]
+      };
+      if (onAddReceipt) onAddReceipt(receipt);
+      handlePrintReceipt(receipt);
+    } else if (newEntry.type === 'CREDITOR') {
+      const entry = {
+        id: `s-${Date.now()}`,
+        name: newEntry.name,
+        phone: newEntry.phone,
+        total_purchased: val,
+        amount_paid: 0,
+        balance_due: val,
+        status: 'PENDING'
+      };
+      setCreditors([...creditors, entry]);
+    }
+
+    setShowAddEntryModal(false);
+    setNewEntry({ name: '', phone: '', type: 'DEBTOR', amount: '' });
+  };
+
   const handleRecordPayment = (e) => {
     e.preventDefault();
     const pay = parseFloat(paymentAmount) || 0;
+    let receiptPrefix = 'REC-DEBT-PAY-';
+    let typeLabel = 'Debtor Balance Payment';
+
     if (activeTab === 'DEBTORS') {
       setDebtors(debtors.map(d => {
         if (d.id === showPaymentModal.id) {
@@ -41,6 +150,8 @@ export default function DebtorsCreditorsLedgerView() {
         return d;
       }));
     } else {
+      receiptPrefix = 'REC-SUP-PAY-';
+      typeLabel = 'Supplier Creditor Payment';
       setCreditors(creditors.map(c => {
         if (c.id === showPaymentModal.id) {
           const newBal = Math.max(0, c.balance_due - pay);
@@ -49,9 +160,25 @@ export default function DebtorsCreditorsLedgerView() {
         return c;
       }));
     }
+
+    // Generate Payment Receipt with unique identifier prefix
+    const receipt = {
+      id: `${receiptPrefix}${Math.floor(100000 + Math.random() * 900000)}`,
+      type_label: typeLabel,
+      customer_name: showPaymentModal.name,
+      timestamp: new Date().toISOString(),
+      payment_method: paymentMethod,
+      total: pay,
+      items: [{ name: `${typeLabel} for ${showPaymentModal.name}`, quantity: 1, selling_price: pay }]
+    };
+
+    if (onAddReceipt) onAddReceipt(receipt);
+    handlePrintReceipt(receipt);
+
     setShowPaymentModal(null);
     setPaymentAmount('');
   };
+
 
   return (
     <div className="space-y-6">
@@ -110,16 +237,25 @@ export default function DebtorsCreditorsLedgerView() {
             </button>
           </div>
 
-          <input 
-            type="text" 
-            placeholder={`Search ${activeTab === 'DEBTORS' ? 'Customer' : 'Supplier'} Name or Phone...`} 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-1.5 text-xs w-full sm:w-64 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
-          />
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setShowAddEntryModal(true)}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3 py-1.5 rounded text-xs transition shadow-sm"
+            >
+              + Add New Entry
+            </button>
+            <input 
+              type="text" 
+              placeholder={`Search ${activeTab === 'DEBTORS' ? 'Customer' : 'Supplier'} Name or Phone...`} 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-1.5 text-xs w-full sm:w-64 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+            />
+          </div>
         </div>
 
         {/* Ledger Table */}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-100 text-gray-700 text-xs uppercase border-b">
@@ -239,6 +375,81 @@ export default function DebtorsCreditorsLedgerView() {
           </div>
         </div>
       )}
+      {/* Add New Entry Modal */}
+      {showAddEntryModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full p-5 space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 border-b pb-2">
+              Add New Account / Entry
+            </h3>
+            <form onSubmit={handleAddEntry} className="space-y-3 text-sm">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Entry Type</label>
+                <select 
+                  className="w-full border rounded px-3 py-1.5"
+                  value={newEntry.type}
+                  onChange={e => setNewEntry({ ...newEntry, type: e.target.value })}
+                >
+                  <option value="DEBTOR">Customer Credit Sale (Debtor)</option>
+                  <option value="PREPAYMENT">Customer Prepayment / Store Credit</option>
+                  <option value="CREDITOR">Supplier Purchase (Creditor)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Name (Customer or Supplier)</label>
+                <input 
+                  required 
+                  type="text" 
+                  placeholder="e.g. Samuel Miller" 
+                  className="w-full border rounded px-3 py-1.5" 
+                  value={newEntry.name} 
+                  onChange={e => setNewEntry({ ...newEntry, name: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone Number</label>
+                <input 
+                  type="text" 
+                  placeholder="+12345678" 
+                  className="w-full border rounded px-3 py-1.5" 
+                  value={newEntry.phone} 
+                  onChange={e => setNewEntry({ ...newEntry, phone: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  {newEntry.type === 'PREPAYMENT' ? 'Prepayment Deposit ($)' : 'Initial Balance Amount ($)'}
+                </label>
+                <input 
+                  required 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="e.g. 150.00" 
+                  className="w-full border rounded px-3 py-1.5" 
+                  value={newEntry.amount} 
+                  onChange={e => setNewEntry({ ...newEntry, amount: e.target.value })} 
+                />
+              </div>
+              <div className="flex justify-end space-x-2 pt-3 border-t">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddEntryModal(false)} 
+                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-900 rounded"
+                >
+                  Save Entry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
