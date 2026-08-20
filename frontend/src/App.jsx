@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import InventoryView from './InventoryView';
 import SalesView from './SalesView';
 import PurchasesView from './PurchasesView';
-import CustomersView from './CustomersView';
+import DebtorsCreditorsLedgerView from './DebtorsCreditorsLedgerView';
 import StockTakeView from './StockTakeView';
 import ReportsView from './ReportsView';
 import ReceiptBookView from './ReceiptBookView';
@@ -29,15 +29,16 @@ export default function App() {
   ]);
 
   const handleSaleComplete = (newReceipt) => {
-    setReceipts([newReceipt, ...receipts]); // Store in receipt book (most recent first)
+    setReceipts([newReceipt, ...receipts]);
   };
 
   const roleNavMap = {
-    ADMIN: ['Dashboard', 'Sales', 'Inventory', 'Purchases', 'Stock Take', 'Customers & Debtors', 'Suppliers & Creditors', 'Reports', 'Receipt Book'],
-    SALES_STAFF: ['Dashboard', 'Sales', 'Receipt Book', 'Customers & Debtors'],
-    STOREKEEPER: ['Dashboard', 'Inventory', 'Purchases', 'Stock Take', 'Suppliers & Creditors'],
+    ADMIN: ['Dashboard', 'Sales', 'Inventory', 'Purchases', 'Stock Take', 'Debtors & Creditors', 'Reports', 'Receipt Book'],
+    SALES_STAFF: ['Dashboard', 'Sales', 'Receipt Book', 'Debtors & Creditors'],
+    STOREKEEPER: ['Dashboard', 'Inventory', 'Purchases', 'Stock Take', 'Debtors & Creditors'],
     VIEWER: ['Dashboard', 'Reports', 'Receipt Book']
   };
+
 
 
   const currentNav = roleNavMap[userRole] || roleNavMap.VIEWER;
@@ -128,9 +129,10 @@ export default function App() {
             </div>
           ) : activeTab === 'Purchases' ? (
             <PurchasesView />
-          ) : activeTab === 'Customers & Debtors' || activeTab === 'Suppliers & Creditors' ? (
-            <CustomersView />
+          ) : activeTab === 'Debtors & Creditors' || activeTab === 'Customers & Debtors' || activeTab === 'Suppliers & Creditors' ? (
+            <DebtorsCreditorsLedgerView />
           ) : activeTab === 'Stock Take' ? (
+
             <StockTakeView />
           ) : activeTab === 'Reports' ? (
             <ReportsView />
