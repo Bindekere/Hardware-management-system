@@ -2,19 +2,33 @@ import React, { useState } from 'react';
 
 const VARIANCE_THRESHOLD = 5; // require manager approval if abs variance >= this
 
-export default function StockTakeView({ userRole }) {
-  const [counts, setCounts] = useState([
-    { id: 'prod-1', name: 'Portland Cement 50kg', location: 'A1-S1-B1', physical: '' },
-    { id: 'prod-2', name: 'PVC Pipe 2 inch (3m)', location: 'A2-S3-B1', physical: '' },
-    { id: 'prod-3', name: 'Steel Nails 3 inch (kg)', location: 'A3-S1-B2', physical: '' }
-  ]);
+const DEFAULT_STOCK_ITEMS = [
+  { id: 'prod-1', name: 'Portland Cement 50kg', location: 'A1-S1-B1', stock_quantity: 120 },
+  { id: 'prod-2', name: 'PVC Pipe 2 inch (3m)', location: 'A2-S3-B1', stock_quantity: 4 },
+  { id: 'prod-3', name: 'Steel Nails 3 inch (kg)', location: 'A3-S1-B2', stock_quantity: 25 }
+];
+
+export default function StockTakeView({ products, userRole }) {
+  const activeProductsList = (products && products.length > 0) ? products : DEFAULT_STOCK_ITEMS;
+
+  const [counts, setCounts] = useState(
+    activeProductsList.map(p => ({
+      id: p.id,
+      name: p.name,
+      location: p.location || p.storage_location_id || 'A1-S1-B1',
+      physical: ''
+    }))
+  );
 
   const [submittedResult, setSubmittedResult] = useState(null);
   const [approvalStatus, setApprovalStatus] = useState({}); // { idx: 'APPROVED'|'REJECTED' }
   const [approvalNote, setApprovalNote] = useState({});     // { idx: noteText }
   const [finalized, setFinalized] = useState(false);
 
-  const systemQty = { 'prod-1': 120, 'prod-2': 4, 'prod-3': 25 };
+  const systemQty = {};
+  activeProductsList.forEach(p => {
+    systemQty[p.id] = parseInt(p.stock_quantity) || 0;
+  });
 
   const handleSubmit = () => {
     const results = counts.map(item => {

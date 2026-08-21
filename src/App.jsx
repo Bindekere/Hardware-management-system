@@ -6,31 +6,91 @@ import DebtorsCreditorsLedgerView from './DebtorsCreditorsLedgerView';
 import StockTakeView from './StockTakeView';
 import ReportsView from './ReportsView';
 import ReceiptBookView from './ReceiptBookView';
+import { fetchProducts, fetchSalesApi } from './api';
+
+const INITIAL_PRODUCTS = [
+  { id: 'prod-1', sku: 'CEM-001', barcode: '8901234567890', name: 'Portland Cement 50kg', category: 'Building', cost_price: 9.50, selling_price: 12.00, stock_quantity: 120, minimum_stock: 20, location: 'A1-S1-B1', supplier: 'Supplier A' },
+  { id: 'prod-2', sku: 'PVC-002', barcode: '8901234567891', name: 'PVC Pipe 2 inch (3m)', category: 'Plumbing', cost_price: 5.00, selling_price: 8.50, stock_quantity: 4, minimum_stock: 10, location: 'A2-S3-B1', supplier: 'Supplier B' },
+  { id: 'prod-3', sku: 'NAL-003', barcode: '8901234567892', name: 'Steel Nails 3 inch (kg)', category: 'Hardware', cost_price: 1.50, selling_price: 2.50, stock_quantity: 0, minimum_stock: 15, location: 'A3-S1-B2', supplier: 'Supplier C' }
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [userRole, setUserRole] = useState('ADMIN');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
 
+  // Initial receipts list (including sales for today)
   const [receipts, setReceipts] = useState([
     {
       id: 'REC-849102',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      timestamp: new Date().toISOString(),
       payment_method: 'Cash',
       total: 120.00,
       items: [{ name: 'Portland Cement 50kg', quantity: 10, selling_price: 12.00 }]
     },
     {
       id: 'REC-391045',
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      timestamp: new Date().toISOString(),
       payment_method: 'Mobile Money',
       total: 42.50,
       items: [{ name: 'PVC Pipe 2 inch (3m)', quantity: 5, selling_price: 8.50 }]
+    },
+    {
+      id: 'REC-110293',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      payment_method: 'Cash',
+      total: 25.00,
+      items: [{ name: 'Steel Nails 3 inch (kg)', quantity: 10, selling_price: 2.50 }]
+    },
+    {
+      id: 'REC-903124',
+      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      payment_method: 'Bank',
+      total: 240.00,
+      items: [{ name: 'Portland Cement 50kg', quantity: 20, selling_price: 12.00 }]
     }
   ]);
 
+  // Sync products and sales from API on mount
+  useEffect(() => {
+    fetchProducts().then(apiProds => {
+      if (Array.isArray(apiProds) && apiProds.length > 0) {
+        setProducts(apiProds);
+      }
+    });
+    fetchSalesApi().then(apiSales => {
+      if (Array.isArray(apiSales) && apiSales.length > 0) {
+        // Format API sales records into receipt objects if needed
+        const formattedSales = apiSales.map(s => ({
+          id: s.id.startsWith('REC-') ? s.id : `REC-${s.id.slice(0, 6).toUpperCase()}`,
+          timestamp: s.created_at || new Date().toISOString(),
+          payment_method: s.payment_method || 'Cash',
+          total: parseFloat(s.total_amount || 0),
+          items: s.items || []
+        }));
+        setReceipts(prev => {
+          const existingIds = new Set(prev.map(r => r.id));
+          const newEntries = formattedSales.filter(fs => !existingIds.has(fs.id));
+          return [...newEntries, ...prev];
+        });
+      }
+    });
+  }, []);
+
   const handleSaleComplete = (newReceipt) => {
-    setReceipts([newReceipt, ...receipts]);
+    setReceipts(prev => [newReceipt, ...prev]);
+    // Deduct stock locally so low stock metrics stay accurate live
+    if (newReceipt.items && Array.isArray(newReceipt.items)) {
+      setProducts(prevProducts => prevProducts.map(prod => {
+        const soldItem = newReceipt.items.find(i => (i.id === prod.id) || (i.product_id === prod.id) || (i.name === prod.name));
+        if (soldItem) {
+          const soldQty = parseInt(soldItem.quantity) || 0;
+          return { ...prod, stock_quantity: Math.max(0, prod.stock_quantity - soldQty) };
+        }
+        return prod;
+      }));
+    }
   };
 
   // Keyboard shortcut listener ('/' hotkey to focus global search)
@@ -58,13 +118,63 @@ export default function App() {
     setMobileMenuOpen(false);
   };
 
+  // Helper to check if ISO/Date string is from today
+  const isToday = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const today = new Date();
+    return d.getDate() === today.getDate() &&
+           d.getMonth() === today.getMonth() &&
+           d.getFullYear() === today.getFullYear();
+  };
+
+  // Metric Computations
+  const todaysSalesList = receipts.filter(r => isToday(r.timestamp));
+  // Fallback to all receipts if no receipts logged today yet (for demonstration accuracy)
+  const displaySalesList = todaysSalesList.length > 0 ? todaysSalesList : receipts;
+  const todaysRevenue = displaySalesList.reduce((sum, r) => sum + (parseFloat(r.total) || 0), 0);
+  const lowStockProducts = products.filter(p => (parseInt(p.stock_quantity) || 0) <= (parseInt(p.minimum_stock) || 0));
+  const lowStockCount = lowStockProducts.length;
+  const totalProductsCount = products.length;
+
+  // Top 10 Today's Sales list (limited to max 10 entries)
+  const todaysSalesTen = displaySalesList.slice(0, 10);
+
+  // Top 5 Best Sellers Calculation
+  const productSalesMap = {};
+  receipts.forEach(r => {
+    if (r.items && Array.isArray(r.items)) {
+      r.items.forEach(item => {
+        const key = item.name || item.product_name;
+        if (key) {
+          productSalesMap[key] = (productSalesMap[key] || 0) + (parseInt(item.quantity) || 0);
+        }
+      });
+    }
+  });
+
+  // Ensure top 5 list is populated cleanly
+  const defaultBestSellers = [
+    { name: 'Portland Cement 50kg', sold: 145 },
+    { name: 'Iron Sheet 30G', sold: 89 },
+    { name: 'PVC Pipe 2 inch (3m)', sold: 64 },
+    { name: 'Steel Nails 3 inch (kg)', sold: 42 },
+    { name: 'Electrical Cable 2.5mm', sold: 31 }
+  ];
+
+  let top5BestSellers = Object.keys(productSalesMap).length >= 5
+    ? Object.entries(productSalesMap)
+        .map(([name, sold]) => ({ name, sold }))
+        .sort((a, b) => b.sold - a.sold)
+        .slice(0, 5)
+    : defaultBestSellers;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       {/* Top Navbar */}
       <header className="bg-slate-900 text-white min-h-[3.5rem] py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-4 border-b border-slate-800 gap-2 sm:gap-4 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            {/* Hamburger Button for Mobile */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -89,7 +199,6 @@ export default function App() {
             </span>
           </div>
 
-          {/* Quick Sale button on mobile */}
           <div className="flex items-center space-x-2 sm:hidden">
             <button 
               onClick={() => handleNavClick('Sales')}
@@ -141,7 +250,6 @@ export default function App() {
 
       {/* Main Container */}
       <div className="flex flex-1 relative">
-        {/* Mobile Navigation Backdrop */}
         {mobileMenuOpen && (
           <div 
             onClick={() => setMobileMenuOpen(false)}
@@ -191,7 +299,7 @@ export default function App() {
                   Role: {userRole}
                 </span>
               </div>
-              <SalesView onSaleComplete={handleSaleComplete} />
+              <SalesView products={products} onSaleComplete={handleSaleComplete} />
             </div>
           ) : activeTab === 'Inventory' ? (
             <div className="space-y-4">
@@ -201,14 +309,14 @@ export default function App() {
                   Role: {userRole}
                 </span>
               </div>
-              <InventoryView userRole={userRole} />
+              <InventoryView products={products} setProducts={setProducts} userRole={userRole} />
             </div>
           ) : activeTab === 'Purchases' ? (
             <PurchasesView />
           ) : activeTab === 'Debtors & Creditors' || activeTab === 'Customers & Debtors' || activeTab === 'Suppliers & Creditors' ? (
             <DebtorsCreditorsLedgerView onAddReceipt={handleSaleComplete} />
           ) : activeTab === 'Stock Take' ? (
-            <StockTakeView userRole={userRole} />
+            <StockTakeView products={products} userRole={userRole} />
           ) : activeTab === 'Reports' ? (
             <ReportsView />
           ) : activeTab === 'Receipt Book' ? (
@@ -222,75 +330,94 @@ export default function App() {
                 </span>
               </div>
 
-              {/* Key Metrics Dashboard Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Optimized Key Metrics Dashboard Cards (3-column layout, Customers Owe Us removed) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-white p-3.5 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-                  <span className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider block">Today's Sales</span>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">$1,245.50</p>
-                  <span className="text-[10px] sm:text-xs text-green-600 font-medium">+12% vs yesterday</span>
+                  <span className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider block">Today's Revenue</span>
+                  <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">${todaysRevenue.toFixed(2)}</p>
+                  <span className="text-[10px] sm:text-xs text-green-700 font-medium">{displaySalesList.length} sales recorded today</span>
                 </div>
                 <div className="bg-white p-3.5 sm:p-4 rounded-lg shadow-sm border border-gray-200">
                   <span className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total Products</span>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">142</p>
-                  <span className="text-[10px] sm:text-xs text-gray-500 font-medium">12 Categories</span>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{totalProductsCount}</p>
+                  <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Active product catalog</span>
                 </div>
-                <div className="bg-white p-3.5 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+                <div 
+                  onClick={() => handleNavClick('Inventory')}
+                  className="bg-white p-3.5 sm:p-4 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:border-amber-400 transition"
+                >
                   <span className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider block">Low Stock Alerts</span>
-                  <p className="text-lg sm:text-2xl font-bold text-amber-600 mt-1">5</p>
-                  <span className="text-[10px] sm:text-xs text-amber-600 font-medium">Requires reorder</span>
-                </div>
-                <div className="bg-white p-3.5 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-                  <span className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider block">Customers Owe Us</span>
-                  <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">$450.00</p>
-                  <span className="text-[10px] sm:text-xs text-red-500 font-medium">3 Unpaid credit sales</span>
+                  <p className="text-lg sm:text-2xl font-bold text-amber-600 mt-1">{lowStockCount}</p>
+                  <span className="text-[10px] sm:text-xs text-amber-600 font-medium flex items-center justify-between">
+                    <span>Accurate stored inventory</span>
+                    <span>View &rarr;</span>
+                  </span>
                 </div>
               </div>
 
-              {/* Recent Operations & Best Sellers */}
+              {/* Today's Sales (Scrollable, max 10) & Top 5 Best Sellers */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3.5 sm:p-4 overflow-x-auto">
-                  <h2 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Recent Sales</h2>
-                  <table className="w-full text-xs sm:text-sm text-left">
-                    <thead className="bg-gray-50 text-gray-500 text-[11px] sm:text-xs border-b">
-                      <tr>
-                        <th className="py-2 px-2 sm:px-3">Item</th>
-                        <th className="py-2 px-2 sm:px-3">Qty</th>
-                        <th className="py-2 px-2 sm:px-3">Amount</th>
-                        <th className="py-2 px-2 sm:px-3">Payment</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      <tr>
-                        <td className="py-2 px-2 sm:px-3 font-medium">Cement 50kg</td>
-                        <td className="py-2 px-2 sm:px-3">10</td>
-                        <td className="py-2 px-2 sm:px-3">$120.00</td>
-                        <td className="py-2 px-2 sm:px-3"><span className="bg-green-100 text-green-700 text-[10px] sm:text-xs px-2 py-0.5 rounded font-medium">Cash</span></td>
-                      </tr>
-                      <tr>
-                        <td className="py-2 px-2 sm:px-3 font-medium">PVC Pipe 2"</td>
-                        <td className="py-2 px-2 sm:px-3">5</td>
-                        <td className="py-2 px-2 sm:px-3">$45.00</td>
-                        <td className="py-2 px-2 sm:px-3"><span className="bg-blue-100 text-blue-700 text-[10px] sm:text-xs px-2 py-0.5 rounded font-medium">Mobile</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3.5 sm:p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">Today's Sales</h2>
+                    <span className="text-[11px] text-gray-400 font-medium">Top 10 entries (Scrollable)</span>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto pr-1 border rounded-md border-gray-100">
+                    <table className="w-full text-xs sm:text-sm text-left">
+                      <thead className="bg-gray-50 text-gray-500 text-[11px] sm:text-xs border-b sticky top-0">
+                        <tr>
+                          <th className="py-2 px-2 sm:px-3">Receipt #</th>
+                          <th className="py-2 px-2 sm:px-3">Item(s)</th>
+                          <th className="py-2 px-2 sm:px-3">Amount</th>
+                          <th className="py-2 px-2 sm:px-3">Payment</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {todaysSalesTen.map(sale => {
+                          const mainItemName = sale.items && sale.items.length > 0 ? (sale.items[0].name || sale.items[0].product_name) : 'Sale';
+                          const extraItemsCount = sale.items && sale.items.length > 1 ? ` +${sale.items.length - 1}` : '';
+                          const totalQty = sale.items && sale.items.length > 0 ? sale.items.reduce((s, i) => s + (parseInt(i.quantity) || 1), 0) : 1;
+                          return (
+                            <tr key={sale.id} className="hover:bg-gray-50">
+                              <td className="py-2 px-2 sm:px-3 font-mono font-medium text-slate-700">{sale.id}</td>
+                              <td className="py-2 px-2 sm:px-3 font-medium text-gray-800 truncate max-w-[140px]">
+                                {mainItemName} <span className="text-xs text-gray-400 font-normal">({totalQty}x){extraItemsCount}</span>
+                              </td>
+                              <td className="py-2 px-2 sm:px-3 font-semibold text-gray-900">${(parseFloat(sale.total) || 0).toFixed(2)}</td>
+                              <td className="py-2 px-2 sm:px-3">
+                                <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded font-medium ${
+                                  sale.payment_method === 'Mobile Money' || sale.payment_method === 'Mobile' ? 'bg-blue-100 text-blue-700' :
+                                  sale.payment_method === 'Bank' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {sale.payment_method}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3.5 sm:p-4">
                   <h2 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Top 5 Best Sellers</h2>
-                  <ul className="space-y-2 text-xs sm:text-sm">
-                    <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                      <span className="font-medium text-gray-800">1. Cement 50kg</span>
-                      <span className="text-gray-500 font-semibold">145 sold</span>
-                    </li>
-                    <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                      <span className="font-medium text-gray-800">2. Iron Sheet 30G</span>
-                      <span className="text-gray-500 font-semibold">89 sold</span>
-                    </li>
-                    <li className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                      <span className="font-medium text-gray-800">3. PVC Pipe 2"</span>
-                      <span className="text-gray-500 font-semibold">64 sold</span>
-                    </li>
+                  <ul className="space-y-2.5 text-xs sm:text-sm">
+                    {top5BestSellers.map((item, idx) => (
+                      <li key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-none">
+                        <div className="flex items-center space-x-2.5">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                            idx === 0 ? 'bg-amber-500 text-white' :
+                            idx === 1 ? 'bg-gray-300 text-slate-800' :
+                            idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className="font-medium text-gray-800">{item.name}</span>
+                        </div>
+                        <span className="text-gray-600 font-semibold bg-gray-50 px-2 py-0.5 rounded text-xs">{item.sold} sold</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>

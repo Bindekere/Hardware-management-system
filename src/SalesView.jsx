@@ -7,7 +7,7 @@ const MOCK_PRODUCTS = [
   { id: 'prod-3', sku: 'NAL-003', barcode: '8901234567892', name: 'Steel Nails 3 inch (kg)', selling_price: 2.50, stock_quantity: 25 }
 ];
 
-export default function SalesView({ onSaleComplete }) {
+export default function SalesView({ products, onSaleComplete }) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -51,10 +51,12 @@ export default function SalesView({ onSaleComplete }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  const filteredProducts = MOCK_PRODUCTS.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase()) ||
-    p.barcode.includes(search)
+  const activeProducts = (products && products.length > 0) ? products : MOCK_PRODUCTS;
+
+  const filteredProducts = activeProducts.filter(p =>
+    (p.name && p.name.toLowerCase().includes(search.toLowerCase())) ||
+    (p.sku && p.sku.toLowerCase().includes(search.toLowerCase())) ||
+    (p.barcode && p.barcode.includes(search))
   );
 
   const addToCart = (product) => {

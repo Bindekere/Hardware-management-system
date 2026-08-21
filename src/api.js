@@ -104,3 +104,27 @@ export async function recordLedgerPaymentApi(payment) {
     return null;
   }
 }
+
+export async function fetchSalesApi() {
+  try {
+    const res = await fetch(`${API_BASE}/sales/`);
+    if (!res.ok) throw new Error('API request failed');
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
+  } catch (err) {
+    console.warn('Backend offline, fetchSalesApi error:', err);
+    return null;
+  }
+}
+
+export async function fetchReportsSummaryApi() {
+  try {
+    const res = await fetch(`${API_BASE}/reports/summary`);
+    if (!res.ok) throw new Error('API request failed');
+    return await res.json();
+  } catch (err) {
+    console.warn('Backend offline, fetchReportsSummaryApi error:', err);
+    return null;
+  }
+}
+

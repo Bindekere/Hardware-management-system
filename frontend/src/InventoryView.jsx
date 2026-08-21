@@ -43,8 +43,11 @@ const INITIAL_PRODUCTS = [
   }
 ];
 
-export default function InventoryView({ userRole }) {
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+export default function InventoryView({ products: parentProducts, setProducts: parentSetProducts, userRole }) {
+  const [localProducts, setLocalProducts] = useState(INITIAL_PRODUCTS);
+  const products = parentProducts || localProducts;
+  const setProducts = parentSetProducts || setLocalProducts;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(null);
