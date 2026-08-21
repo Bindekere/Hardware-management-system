@@ -61,9 +61,9 @@ def health_check():
 
 def get_file_path(subpath: str):
     candidates = [
-        Path(__file__).parent / "dist" / subpath,
         Path(__file__).parent.parent / "dist" / subpath,
         Path(__file__).parent.parent / "frontend" / "dist" / subpath,
+        Path(__file__).parent / "dist" / subpath,
     ]
     for c in candidates:
         if c.exists() and c.is_file():
