@@ -52,30 +52,35 @@ export default function App() {
     }
   ]);
 
-  // Sync products and sales from API on mount
+  // Real-time multi-device sync: poll products & sales from API every 3s
   useEffect(() => {
-    fetchProducts().then(apiProds => {
-      if (Array.isArray(apiProds) && apiProds.length > 0) {
-        setProducts(apiProds);
-      }
-    });
-    fetchSalesApi().then(apiSales => {
-      if (Array.isArray(apiSales) && apiSales.length > 0) {
-        // Format API sales records into receipt objects if needed
-        const formattedSales = apiSales.map(s => ({
-          id: s.id.startsWith('REC-') ? s.id : `REC-${s.id.slice(0, 6).toUpperCase()}`,
-          timestamp: s.created_at || new Date().toISOString(),
-          payment_method: s.payment_method || 'Cash',
-          total: parseFloat(s.total_amount || 0),
-          items: s.items || []
-        }));
-        setReceipts(prev => {
-          const existingIds = new Set(prev.map(r => r.id));
-          const newEntries = formattedSales.filter(fs => !existingIds.has(fs.id));
-          return [...newEntries, ...prev];
-        });
-      }
-    });
+    const loadLiveData = () => {
+      fetchProducts().then(apiProds => {
+        if (Array.isArray(apiProds) && apiProds.length > 0) {
+          setProducts(apiProds);
+        }
+      });
+      fetchSalesApi().then(apiSales => {
+        if (Array.isArray(apiSales) && apiSales.length > 0) {
+          const formattedSales = apiSales.map(s => ({
+            id: s.id.startsWith('REC-') ? s.id : `REC-${s.id.slice(0, 6).toUpperCase()}`,
+            timestamp: s.created_at || new Date().toISOString(),
+            payment_method: s.payment_method || 'Cash',
+            total: parseFloat(s.total_amount || 0),
+            items: s.items || []
+          }));
+          setReceipts(prev => {
+            const existingMap = new Map(prev.map(r => [r.id, r]));
+            formattedSales.forEach(fs => existingMap.set(fs.id, fs));
+            return Array.from(existingMap.values());
+          });
+        }
+      });
+    };
+
+    loadLiveData();
+    const interval = setInterval(loadLiveData, 3000); // Poll every 3 seconds for live multi-user sync
+    return () => clearInterval(interval);
   }, []);
 
   const handleSaleComplete = (newReceipt) => {
