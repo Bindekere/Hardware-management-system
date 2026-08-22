@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from typing import List, Optional
 import uuid
 from schemas import ProductCreate, ProductUpdate, ProductResponse, StockAdjustmentCreate
@@ -16,7 +16,8 @@ PRODUCTS_DB = [
 STOCK_MOVEMENTS_DB = []
 
 @router.get("/", response_model=List[ProductResponse])
-def get_products(search: Optional[str] = None, category: Optional[str] = None):
+def get_products(response: Response, search: Optional[str] = None, category: Optional[str] = None):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     if supabase:
         try:
             query = supabase.table("products").select("*").eq("active", True)

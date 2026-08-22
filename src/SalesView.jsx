@@ -167,28 +167,36 @@ export default function SalesView({ products, onSaleComplete }) {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
-    const saleRecord = {
-      id: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
-      total: totalAmount,
-      payment_method: paymentMethod,
-      timestamp: new Date().toISOString(),
-      items: cart
-    };
-    
-    setCompletedSale(saleRecord);
-    setMobileCartOpen(false);
+    try {
+      const result = await processSaleApi({
+        items: cart.map(i => ({ product_id: i.id, quantity: i.quantity, unit_price: i.selling_price })),
+        payment_method: paymentMethod,
+        amount_paid: totalAmount
+      });
+      const savedSale = result.sale;
+      const saleRecord = {
+        id: savedSale.id.startsWith('REC-') ? savedSale.id : `REC-${savedSale.id.slice(0, 6).toUpperCase()}`,
+        total: Number(savedSale.total_amount),
+        payment_method: savedSale.payment_method,
+        timestamp: savedSale.created_at,
+        items: savedSale.items.map(item => ({
+          id: item.product_id,
+          name: item.product_name,
+          quantity: item.quantity,
+          selling_price: Number(item.unit_price)
+        }))
+      };
 
-    // Sync with FastAPI backend
-    await processSaleApi({
-      items: cart.map(i => ({ product_id: i.id, quantity: i.quantity, unit_price: i.selling_price })),
-      payment_method: paymentMethod,
-      amount_paid: totalAmount
-    });
+      setCompletedSale(saleRecord);
+      setMobileCartOpen(false);
 
-    if (onSaleComplete) {
-      onSaleComplete(saleRecord);
+      if (onSaleComplete) {
+        onSaleComplete(saleRecord);
+      }
+      setCart([]);
+    } catch (err) {
+      window.alert(`Sale was not saved: ${err.message}`);
     }
-    setCart([]);
   };
 
   return (

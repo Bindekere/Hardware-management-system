@@ -6,7 +6,7 @@ const API_BASE = import.meta.env.VITE_API_URL !== undefined
 
 export async function fetchProducts() {
   try {
-    const res = await fetch(`${API_BASE}/products/`);
+    const res = await fetch(`${API_BASE}/products/?_=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('API request failed');
     const data = await res.json();
     return Array.isArray(data) ? data : null;
@@ -23,6 +23,10 @@ export async function createProductApi(product) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(product)
     });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.detail || `Product request failed (${res.status})`);
+    }
     return await res.json();
   } catch (err) {
     console.warn('Backend offline, saved locally:', err);
@@ -37,10 +41,14 @@ export async function processSaleApi(sale) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sale)
     });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.detail || `Sale request failed (${res.status})`);
+    }
     return await res.json();
   } catch (err) {
-    console.warn('Backend offline, processed locally:', err);
-    return null;
+    console.error('Sale was not saved:', err);
+    throw err;
   }
 }
 
@@ -107,7 +115,7 @@ export async function recordLedgerPaymentApi(payment) {
 
 export async function fetchSalesApi() {
   try {
-    const res = await fetch(`${API_BASE}/sales/`);
+    const res = await fetch(`${API_BASE}/sales/?_=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('API request failed');
     const data = await res.json();
     return Array.isArray(data) ? data : null;
@@ -127,4 +135,3 @@ export async function fetchReportsSummaryApi() {
     return null;
   }
 }
-

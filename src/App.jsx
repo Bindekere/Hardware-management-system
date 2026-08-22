@@ -61,19 +61,20 @@ export default function App() {
         }
       });
       fetchSalesApi().then(apiSales => {
-        if (Array.isArray(apiSales) && apiSales.length > 0) {
+        if (Array.isArray(apiSales)) {
           const formattedSales = apiSales.map(s => ({
             id: s.id.startsWith('REC-') ? s.id : `REC-${s.id.slice(0, 6).toUpperCase()}`,
             timestamp: s.created_at || new Date().toISOString(),
             payment_method: s.payment_method || 'Cash',
             total: parseFloat(s.total_amount || 0),
-            items: s.items || []
+            items: (s.items || s.sale_items || []).map(item => ({
+              id: item.product_id,
+              name: item.product_name || item.name || 'Product',
+              quantity: item.quantity,
+              selling_price: parseFloat(item.unit_price || item.selling_price || 0)
+            }))
           }));
-          setReceipts(prev => {
-            const existingMap = new Map(prev.map(r => [r.id, r]));
-            formattedSales.forEach(fs => existingMap.set(fs.id, fs));
-            return Array.from(existingMap.values());
-          });
+          setReceipts(formattedSales);
         }
       });
     };

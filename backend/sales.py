@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 import uuid
 from datetime import datetime
 from typing import List
@@ -11,12 +11,19 @@ router = APIRouter(prefix="/sales", tags=["Sales"])
 SALES_DB = []
 
 @router.get("/")
-def get_sales():
+def get_sales(response: Response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     if supabase:
         try:
             result = supabase.table("sales").select("*, sale_items(*)").order("created_at", desc=True).execute()
             if result.data is not None:
-                return result.data
+                return [
+                    {
+                        **sale,
+                        "items": sale.get("sale_items", []) or []
+                    }
+                    for sale in result.data
+                ]
         except Exception as e:
             print(f"Supabase read failed, returning in-memory: {e}")
     return SALES_DB
@@ -77,8 +84,10 @@ def process_sale(sale: SaleCreate):
         "items": processed_items
     }
 
-    if supabase:
-        try:
+    if not supabase:
+        raise HTTPException(status_code=503, detail="Shared database is not configured")
+
+    try:
             # 1. Insert sale header
             sale_header = {k: v for k, v in sale_record.items() if k != "items"}
             supabase.table("sales").insert(sale_header).execute()
@@ -101,36 +110,19 @@ def process_sale(sale: SaleCreate):
                 if target_prod and "id" in target_prod:
                     current_qty = int(target_prod.get("stock_quantity", 0))
                     new_qty = max(0, current_qty - item.quantity)
-                    try:
-                        supabase.table("products").update({"stock_quantity": new_qty}).eq("id", target_prod["id"]).execute()
-                        supabase.table("stock_movements").insert({
-                            "id": str(uuid.uuid4()),
-                            "product_id": target_prod["id"],
-                            "movement_type": "SALE",
-                            "quantity": -item.quantity,
-                            "reference_id": sale_id,
-                            "reason": f"Sale {sale_id[:8]}"
-                        }).execute()
-                    except Exception as err:
-                        print(f"Stock update error for product {target_prod['id']}: {err}")
+                    stock_result = supabase.table("products").update({"stock_quantity": new_qty}).eq("id", target_prod["id"]).execute()
+                    if not stock_result.data:
+                        raise RuntimeError(f"Product stock was not updated for {target_prod['id']}")
+                    supabase.table("stock_movements").insert({
+                        "id": str(uuid.uuid4()),
+                        "product_id": target_prod["id"],
+                        "movement_type": "SALE",
+                        "quantity": -item.quantity,
+                        "reference_id": sale_id,
+                        "reason": f"Sale {sale_id[:8]}"
+                    }).execute()
 
             return {"message": "Sale processed and persisted successfully to Supabase", "sale": sale_record}
-        except Exception as e:
-            print(f"Supabase sale persistence exception, fallback in-memory: {e}")
-
-    # In-memory fallback
-    for item in sale.items:
-        prod = next((p for p in PRODUCTS_DB if p["id"] == item.product_id), None)
-        if prod:
-            prod["stock_quantity"] = max(0, prod["stock_quantity"] - item.quantity)
-            STOCK_MOVEMENTS_DB.append({
-                "id": str(uuid.uuid4()),
-                "product_id": prod["id"],
-                "movement_type": "SALE",
-                "quantity": -item.quantity,
-                "reference_id": sale_id,
-                "reason": f"Sale {sale_id[:8]}"
-            })
-
-    SALES_DB.append(sale_record)
-    return {"message": "Sale processed successfully", "sale": sale_record}
+    except Exception as e:
+        print(f"Supabase sale persistence exception: {e}")
+        raise HTTPException(status_code=503, detail="Sale could not be saved to the shared database") from e
